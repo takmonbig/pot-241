@@ -203,6 +203,8 @@ export default function Admin() {
   const updMeta = (k, v) => setCfg((c) => ({ ...c, meta_pixel: { ...c.meta_pixel, [k]: v } }));
   const updMetaEvent = (k, v) => setCfg((c) => ({ ...c, meta_pixel: { ...c.meta_pixel, events: { ...c.meta_pixel.events, [k]: v } } }));
   const updSupport = (k, v) => setCfg((c) => ({ ...c, support_config: { ...c.support_config, [k]: v } }));
+  const updGame = (key, k, v) => setCfg((c) => ({ ...c, [key]: { ...c[key], [k]: v } }));
+  const updMode = (mode, k, v) => setCfg((c) => ({ ...c, chicken_config: { ...c.chicken_config, modes: { ...c.chicken_config.modes, [mode]: { ...c.chicken_config.modes[mode], [k]: v } } } }));
   const csv = (v) => String(v).split(",").map((x) => parseFloat(x.trim())).filter((x) => !isNaN(x));
 
   return (
@@ -286,6 +288,65 @@ export default function Admin() {
                   <div className="col-span-2 md:col-span-4"><Field label="Entry Fee Variants (CSV coins)" type="text" value={(cfg.room_config.entry_fees || []).join(", ")} onChange={(v) => updRoom("entry_fees", csv(v))} /></div>
                 </div>
               </div>
+              {cfg.vortex_config && (
+                <div className="rounded-2xl pz-glass p-6" data-testid="admin-vortex-config">
+                  <h3 className="font-display font-bold text-lg mb-1">Vortex Spin</h3>
+                  <p className="text-xs text-white/40 mb-4">Provably fair. Break slots per stage are set as CSV, one list per element (out of the segment count).</p>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <Field label="Min Bet" value={cfg.vortex_config.min_bet} onChange={(v) => updGame("vortex_config", "min_bet", v)} />
+                    <Field label="Max Bet" value={cfg.vortex_config.max_bet} onChange={(v) => updGame("vortex_config", "max_bet", v)} />
+                    <Field label="House Edge %" value={cfg.vortex_config.house_edge_percent} onChange={(v) => updGame("vortex_config", "house_edge_percent", v)} />
+                    <Field label="Partial Collect %" value={cfg.vortex_config.partial_collect_percent} onChange={(v) => updGame("vortex_config", "partial_collect_percent", v)} />
+                    <div className="flex items-end"><ToggleRow label="Enabled" checked={cfg.vortex_config.enabled} onChange={(v) => updGame("vortex_config", "enabled", v)} testid="toggle-vortex" /></div>
+                    {Object.keys(cfg.vortex_config.themes || {}).map((k) => (
+                      <div key={k} className="col-span-2 md:col-span-5"><Field label={`${k} break slots per stage (CSV)`} type="text" value={(cfg.vortex_config.themes[k].lose || []).join(",")}
+                        onChange={(v) => setCfg((c) => ({ ...c, vortex_config: { ...c.vortex_config, themes: { ...c.vortex_config.themes, [k]: { ...c.vortex_config.themes[k], lose: csv(v).map((x) => Math.round(x)) } } } }))} /></div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {cfg.chicken_config && (
+                <div className="rounded-2xl pz-glass p-6" data-testid="admin-chicken-config">
+                  <h3 className="font-display font-bold text-lg mb-1">Chicken Quest</h3>
+                  <p className="text-xs text-white/40 mb-4">Provably fair. Trap chance is per lane (0–1).</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Field label="Min Bet" value={cfg.chicken_config.min_bet} onChange={(v) => updGame("chicken_config", "min_bet", v)} />
+                    <Field label="Max Bet" value={cfg.chicken_config.max_bet} onChange={(v) => updGame("chicken_config", "max_bet", v)} />
+                    <Field label="House Edge %" value={cfg.chicken_config.house_edge_percent} onChange={(v) => updGame("chicken_config", "house_edge_percent", v)} />
+                    <div className="flex items-end"><ToggleRow label="Enabled" checked={cfg.chicken_config.enabled} onChange={(v) => updGame("chicken_config", "enabled", v)} testid="toggle-chicken" /></div>
+                    {Object.entries(cfg.chicken_config.modes || {}).map(([k, m]) => (
+                      <div key={k} className="col-span-2 grid grid-cols-2 gap-2">
+                        <Field label={`${k} lanes`} value={m.steps} onChange={(v) => updMode(k, "steps", v)} />
+                        <Field label={`${k} trap chance`} value={m.hazard} onChange={(v) => updMode(k, "hazard", v)} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {cfg.stack_config && (
+                <div className="rounded-2xl pz-glass p-6" data-testid="admin-stack-config">
+                  <h3 className="font-display font-bold text-lg mb-1">Tower Stack</h3>
+                  <p className="text-xs text-white/40 mb-4">Skill game. Endless payout = height × per-level + perfects × per-perfect. Versus rooms: one per entry fee × room size.</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Field label="Min Bet" value={cfg.stack_config.min_bet} onChange={(v) => updGame("stack_config", "min_bet", v)} />
+                    <Field label="Max Bet" value={cfg.stack_config.max_bet} onChange={(v) => updGame("stack_config", "max_bet", v)} />
+                    <Field label="Min Height" value={cfg.stack_config.min_height} onChange={(v) => updGame("stack_config", "min_height", v)} />
+                    <Field label="Per Level ×" value={cfg.stack_config.per_level} onChange={(v) => updGame("stack_config", "per_level", v)} />
+                    <Field label="Per Perfect ×" value={cfg.stack_config.per_perfect} onChange={(v) => updGame("stack_config", "per_perfect", v)} />
+                    <Field label="Max Multiplier" value={cfg.stack_config.max_multiplier} onChange={(v) => updGame("stack_config", "max_multiplier", v)} />
+                    <Field label="Base Speed" value={cfg.stack_config.base_speed} onChange={(v) => updGame("stack_config", "base_speed", v)} />
+                    <Field label="Max Speed" value={cfg.stack_config.max_speed} onChange={(v) => updGame("stack_config", "max_speed", v)} />
+                    <Field label="Perfect Tolerance" value={cfg.stack_config.perfect_tolerance} onChange={(v) => updGame("stack_config", "perfect_tolerance", v)} />
+                    <Field label="Versus Platform Fee %" value={cfg.stack_config.mp_platform_fee_percent} onChange={(v) => updGame("stack_config", "mp_platform_fee_percent", v)} />
+                    <Field label="Versus Play Window (s)" value={cfg.stack_config.mp_play_window_seconds} onChange={(v) => updGame("stack_config", "mp_play_window_seconds", v)} />
+                    <Field label="Bot Fill After (s)" value={cfg.stack_config.mp_bot_fill_seconds} onChange={(v) => updGame("stack_config", "mp_bot_fill_seconds", v)} />
+                    <div className="col-span-2"><Field label="Versus Entry Fees (CSV)" type="text" value={(cfg.stack_config.mp_entry_fees || []).join(",")} onChange={(v) => updGame("stack_config", "mp_entry_fees", csv(v))} /></div>
+                    <div className="col-span-2"><Field label="Versus Room Sizes (CSV, 2-4)" type="text" value={(cfg.stack_config.mp_sizes || []).join(",")} onChange={(v) => updGame("stack_config", "mp_sizes", csv(v).map((x) => Math.max(2, Math.min(4, Math.round(x)))))} /></div>
+                    <div className="flex items-end"><ToggleRow label="Enabled" checked={cfg.stack_config.enabled} onChange={(v) => updGame("stack_config", "enabled", v)} testid="toggle-stack" /></div>
+                    <div className="flex items-end"><ToggleRow label="Versus Enabled" checked={cfg.stack_config.mp_enabled} onChange={(v) => updGame("stack_config", "mp_enabled", v)} /></div>
+                  </div>
+                </div>
+              )}
               <div className="rounded-2xl pz-glass p-6">
                 <h3 className="font-display font-bold text-lg mb-4">Bots</h3>
                 <div className="flex flex-wrap items-center gap-6 mb-4">

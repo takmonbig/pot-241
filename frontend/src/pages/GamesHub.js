@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Timer, Plane, Castle, ChevronRight, Gamepad2 } from "lucide-react";
+import { Timer, Plane, Castle, ChevronRight, Gamepad2, Tornado, Egg, Layers, ShieldCheck } from "lucide-react";
 import { DailyReward } from "@/components/DailyReward";
 import { Guide } from "@/components/Guide";
 
 const IMG = "https://static.prod-images.emergentagent.com/jobs/670c5923-c1f4-4298-9135-36fea583d12c/images/";
+const IMG2 = "https://static.prod-images.emergentagent.com/jobs/1d2db223-cf0e-4ebf-b00c-a47a46100ac9/images/";
 const GAMES = [
   { id: "stopwatch", to: "/games/stopwatch", title: "Stopwatch", tag: "Win 5×", desc: "Stop the clock exactly on target.", icon: Timer,
     img: IMG + "3e91b1e43f580947843cce37c5bd3b2f78409a9a5bd0c0b6760c17c331142988.jpeg" },
@@ -12,6 +13,12 @@ const GAMES = [
     img: IMG + "717f36ec2192ac9731af75616c523b892cbceddb3b3b474e1298b63f7f9224ec.jpeg" },
   { id: "tower", to: "/games/tower", title: "Tower", tag: "Climb & win", desc: "Pick safe tiles, dodge the bombs.", icon: Castle,
     img: IMG + "ac37d044145e261752683c651aedb3895405c487573fd4143c78f26f1d74dc0e.jpeg" },
+  { id: "vortex", to: "/games/vortex", title: "Vortex Spin", tag: "Up to 30×", desc: "Fire, Water, Earth. Spin, bank or ride.", icon: Tornado,
+    img: IMG2 + "36e7f60b73bab5c78ea993d555ceaa9dab9a32a1d0752880ab7ab474a62d6c0d.jpeg" },
+  { id: "stack", to: "/games/stack", title: "Tower Stack", tag: "Skill · 3D", desc: "Tap to stack. Perfects build combos.", icon: Layers,
+    img: IMG2 + "0fb7b57cd56bf803c69b78b81da7e4d698a90625ec292057993d192234bbc713.jpeg" },
+  { id: "chicken", to: "/games/chicken", title: "Chicken Quest", tag: "4 modes", desc: "Cross the lanes, dodge the traps.", icon: Egg,
+    img: IMG2 + "2b1125721182200da6a6b79fdd9afe0d2f30603b64f352eae0eecdd79162c64c.jpeg" },
 ];
 
 function GameCard({ g, i }) {
@@ -50,6 +57,10 @@ export default function GamesHub() {
       </div>
       <p className="text-white/50 text-sm mb-6">Pick your game. Skill, nerve and timing win coins.</p>
       <div className="space-y-4">{GAMES.map((g, i) => <GameCard key={g.id} g={g} i={i} />)}</div>
+      <Link to="/games/fairness" data-testid="hub-fairness-link"
+        className="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-500/[0.05] py-3 text-sm text-emerald-300 hover:bg-emerald-500/10 transition-colors">
+        <ShieldCheck className="h-4 w-4" /> Provably fair games & rules
+      </Link>
     </div>
   );
 }

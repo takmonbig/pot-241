@@ -2175,7 +2175,9 @@ async def root():
     return {"message": "TIMEUP API", "status": "ok"}
 
 
+import games_extra  # noqa: E402  (registers Vortex Spin / Chicken Quest / Tower Stack routes)
 app.include_router(api)
+app.include_router(games_extra.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -2248,6 +2250,7 @@ async def startup():
     except Exception as e:
         logger.warning(f"stale room cleanup skipped: {e}")
     asyncio.create_task(room_manager_loop())
+    asyncio.create_task(games_extra.stack_room_loop())
     logger.info("TIMEUP API started")
 
 

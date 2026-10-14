@@ -12,6 +12,10 @@ import GameHome from "@/pages/GameHome";
 import GamesHub from "@/pages/GamesHub";
 import Aviator from "@/pages/Aviator";
 import Tower from "@/pages/Tower";
+import VortexSpin from "@/pages/VortexSpin";
+import ChickenQuest from "@/pages/ChickenQuest";
+import TowerStack from "@/pages/TowerStack";
+import Fairness from "@/pages/Fairness";
 import OneVsOne from "@/pages/OneVsOne";
 import Multiplayer from "@/pages/Multiplayer";
 import Leaderboard from "@/pages/Leaderboard";
@@ -49,6 +53,10 @@ function App() {
               <Route path="/games/stopwatch" element={<GameHome />} />
               <Route path="/games/aviator" element={<Aviator />} />
               <Route path="/games/tower" element={<Tower />} />
+              <Route path="/games/vortex" element={<VortexSpin />} />
+              <Route path="/games/chicken" element={<ChickenQuest />} />
+              <Route path="/games/stack" element={<TowerStack />} />
+              <Route path="/games/fairness" element={<Fairness />} />
               <Route path="/1v1" element={<OneVsOne />} />
               <Route path="/multiplayer" element={<Multiplayer />} />
               <Route path="/leaderboard" element={<Leaderboard />} />

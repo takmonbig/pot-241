@@ -101,3 +101,30 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+user_problem_statement: "TIMEUP gaming platform — add 3 new games: Vortex Spin (provably fair, Fire/Water/Earth, 5 stages, Collect / 50% Partial Collect), Tower Stack (3D three.js skill stacking, perfect detection, combos, endless, timed challenges, 2-4 player versus rooms), Chicken Quest (provably fair, Easy/Medium/Hard/Hardcore, Continue/Collect). Plus Fairness page (rules + verify tool)."
+
+backend:
+  - task: "Provably fair seeds + Vortex / Chicken / Stack APIs (backend/games_extra.py)"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/games_extra.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "New endpoints: /api/fair/seed, /api/fair/client-seed, /api/fair/rounds, /api/games/extra/config, /api/games/vortex/{start,spin,collect}, /api/games/chicken/{start,step,collect}, /api/games/stack/{start,finish}, /api/games/stack/rooms (+/{id}, /{id}/join, /{id}/play). Session token field is `token` (not nonce)."
+
+frontend:
+  - task: "VortexSpin, ChickenQuest, TowerStack (three.js), Fairness pages + hub cards + admin config"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/{VortexSpin,ChickenQuest,TowerStack,Fairness}.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Routes /games/vortex, /games/chicken, /games/stack, /games/fairness"

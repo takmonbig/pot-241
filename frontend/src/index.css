@@ -193,3 +193,18 @@ body {
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 .pz-pop { animation: pz-pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* ---- Vortex Spin / Chicken Quest / Tower Stack effects ---- */
+@keyframes vx-rise { 0% { transform: translateY(0) scale(1); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(-420px) scale(0.3); opacity: 0; } }
+@keyframes vx-float { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-18px) rotate(160deg); } }
+@keyframes vx-swirl { to { transform: rotate(360deg); } }
+@keyframes vx-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-10px); } 40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+@keyframes cq-flicker { 0%,100% { transform: scaleY(1); opacity: .85; } 50% { transform: scaleY(1.25); opacity: 1; } }
+@keyframes cq-car { from { transform: translateY(-140%); } to { transform: translateY(560%); } }
+.vx-particle-fire { animation: vx-rise linear infinite; background: radial-gradient(circle, #ffd27a, #ff5a1f 55%, transparent 70%); border-radius: 9999px; }
+.vx-particle-water { animation: vx-rise linear infinite; border: 1.5px solid rgba(125, 211, 252, .8); border-radius: 9999px; background: rgba(56, 189, 248, .12); }
+.vx-particle-earth { animation: vx-float ease-in-out infinite; background: linear-gradient(135deg, #a07a45, #4a3418); border-radius: 30% 45% 35% 50%; }
+.vx-swirl { animation: vx-swirl 9s linear infinite; }
+.vx-shake { animation: vx-shake .5s ease-in-out; }
+.cq-flame { animation: cq-flicker .35s ease-in-out infinite; transform-origin: bottom center; }
+.cq-car { animation: cq-car linear infinite; }
