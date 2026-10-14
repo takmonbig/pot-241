@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import * as THREE from "three";
+import { createStage, createParticles, THREE } from "@/lib/three3d";
 
 const S = 3; // world units per engine unit
 const BH = 0.7; // block height
@@ -20,36 +20,30 @@ export const StackScene = forwardRef(function StackScene({ onFrame, className },
 
   useEffect(() => {
     const mount = mountRef.current;
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    mount.appendChild(renderer.domElement);
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+    const S3 = createStage(mount, { ortho: VIEW, exposure: 1.1, envIntensity: 0.8 });
+    const { scene, camera } = S3;
     const camBase = new THREE.Vector3(10, 8, 10);
     camera.position.copy(camBase);
     camera.lookAt(0, 0, 0);
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.0);
     sun.position.set(6, 16, 4);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(512, 512);
     Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 0.5, far: 60 });
     scene.add(sun);
     scene.add(sun.target);
     const rim = new THREE.PointLight(0xff2a3a, 40, 30);
     rim.position.set(-6, 4, -4);
     scene.add(rim);
+    const sparks = createParticles(scene, { count: 240, size: 0.25, color: 0xffffff });
 
     const unit = new THREE.BoxGeometry(1, 1, 1);
     const group = new THREE.Group();
     scene.add(group);
 
     const mkMesh = (box, level, color) => {
-      const m = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: color || colorFor(level), roughness: 0.35, metalness: 0.15 }));
+      const m = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: color || colorFor(level), roughness: 0.22, metalness: 0.15, envMapIntensity: 1.1 }));
       m.scale.set(box.w * S, BH, box.d * S);
       m.position.set(box.x * S, (level - 0.5) * BH, box.z * S);
       m.castShadow = true;
@@ -65,23 +59,9 @@ export const StackScene = forwardRef(function StackScene({ onFrame, className },
     base.receiveShadow = true;
     scene.add(base);
 
-    const resize = () => {
-      const w = mount.clientWidth || 1;
-      const h = mount.clientHeight || 1;
-      renderer.setSize(w, h);
-      const a = w / h;
-      Object.assign(camera, { left: (-VIEW * a) / 2, right: (VIEW * a) / 2, top: VIEW / 2, bottom: -VIEW / 2 });
-      camera.updateProjectionMatrix();
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(mount);
-
-    let raf;
-    const loop = (now) => {
-      const dt = Math.min(0.05, (now - state.last) / 1000);
-      state.last = now;
+    S3.start((dt, now) => {
       frameCb.current?.(now);
+      sparks.update(dt);
       for (let i = state.falling.length - 1; i >= 0; i--) {
         const f = state.falling[i];
         f.v.y -= 22 * dt;
@@ -104,10 +84,7 @@ export const StackScene = forwardRef(function StackScene({ onFrame, className },
       sun.position.set(6, 16 + state.camY, 4);
       sun.target.position.set(0, state.camY, 0);
       rim.position.y = 4 + state.camY;
-      renderer.render(scene, camera);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
+    });
 
     c.current = {
       reset() {
@@ -145,17 +122,15 @@ export const StackScene = forwardRef(function StackScene({ onFrame, className },
         m.scale.set(box.w * S, 1, box.d * S);
         group.add(m);
         state.fx.push({ m, t: 0, sx: box.w * S, sz: box.d * S });
+        for (let i = 0; i < 40; i++) {
+          const a = Math.random() * Math.PI * 2;
+          sparks.emit({ x: box.x * S + Math.cos(a) * box.w * S * 0.6, y: (level - 1) * BH, z: box.z * S + Math.sin(a) * box.d * S * 0.6, vx: Math.cos(a) * 2, vy: 1 + Math.random() * 2, vz: Math.sin(a) * 2, g: 4, life: 0.6, color: 0xfff1b0 });
+        }
       },
     };
     c.current.reset();
 
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      renderer.dispose();
-      unit.dispose();
-      if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
-    };
+    return () => { unit.dispose(); S3.dispose(); };
   }, []);
 
   useImperativeHandle(ref, () => ({

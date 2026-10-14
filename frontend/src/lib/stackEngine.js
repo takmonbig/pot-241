@@ -3,8 +3,13 @@ export const tri = (x) => {
   const u = x % 2;
   return u < 1 ? -1 + 2 * u : 3 - 2 * u;
 };
-export const speedAt = (eng, i) => Math.min(eng.max_speed, eng.base_speed + i * eng.speed_step);
-export const offsetAt = (eng, i, t) => eng.range * tri((t / 1000) * speedAt(eng, i));
+const blockParams = (eng, i) => {
+  const ph = eng.phases?.length ? eng.phases[i % eng.phases.length] : 0;
+  const jit = eng.jitter?.length ? eng.jitter[i % eng.jitter.length] : 1;
+  return [ph, jit];
+};
+export const speedAt = (eng, i) => Math.min(eng.max_speed, eng.base_speed + i * eng.speed_step) * blockParams(eng, i)[1];
+export const offsetAt = (eng, i, t) => eng.range * tri((t / 1000) * speedAt(eng, i) + blockParams(eng, i)[0]);
 
 export const initialState = () => ({ top: { x: 0, z: 0, w: 1, d: 1 }, height: 0, perfects: 0, combo: 0, maxCombo: 0, elapsed: 0 });
 

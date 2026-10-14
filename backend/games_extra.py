@@ -187,11 +187,67 @@ async def fair_rounds(user: dict = Depends(S.get_current_user)):
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+def _num(v, default):
+    try:
+        f = float(v)
+        return default if math.isnan(f) else f
+    except (TypeError, ValueError):
+        return default
+
+
 def _bet_checks(gc: dict, bet: float, name: str):
-    if bet < gc.get("min_bet", 20):
-        raise HTTPException(status_code=400, detail=f"Minimum bet is {gc.get('min_bet', 20)} coins")
-    if bet > gc.get("max_bet", 5000):
-        raise HTTPException(status_code=400, detail=f"Maximum bet is {gc.get('max_bet', 5000)} coins")
+    lo, hi = _num(gc.get("min_bet"), 20), _num(gc.get("max_bet"), 5000)
+    if bet <= 0 or bet < lo:
+        raise HTTPException(status_code=400, detail=f"Minimum bet is {lo:g} coins")
+    if bet > hi:
+        raise HTTPException(status_code=400, detail=f"Maximum bet is {hi:g} coins")
+
+
+def sanitize_extra_config(data: dict):
+    """Validate / clamp admin edits of the 3 new game configs (called from PUT /admin/config)."""
+    bad = []
+
+    def fix(section, key, lo, hi, default, integer=False):
+        sec = data.get(section)
+        if not isinstance(sec, dict) or key not in sec:
+            return
+        v = _num(sec[key], None)
+        if v is None:
+            bad.append(f"{section}.{key}")
+            v = default
+        v = max(lo, min(hi, v))
+        sec[key] = int(round(v)) if integer else v
+
+    for sec in ("vortex_config", "chicken_config", "stack_config"):
+        fix(sec, "min_bet", 1, 1e7, 20)
+        fix(sec, "max_bet", 1, 1e8, 5000)
+        fix(sec, "house_edge_percent", 0, 50, 4)
+    fix("vortex_config", "partial_collect_percent", 1, 99, 50)
+    fix("vortex_config", "segments", 4, 24, 12, integer=True)
+    vc = data.get("vortex_config")
+    if isinstance(vc, dict):
+        seg = int(vc.get("segments", 12) or 12)
+        for t in (vc.get("themes") or {}).values():
+            lose = [int(max(1, min(seg - 1, _num(x, 1)))) for x in (t.get("lose") or [])]
+            t["lose"] = lose or [2, 2, 3, 3, 4]
+    cc = data.get("chicken_config")
+    if isinstance(cc, dict):
+        for m in (cc.get("modes") or {}).values():
+            m["steps"] = int(max(2, min(60, _num(m.get("steps"), 20))))
+            m["hazard"] = max(0.005, min(0.9, _num(m.get("hazard"), 0.1)))
+    for key, lo, hi, d in [("min_height", 1, 100, 5), ("per_level", 0, 5, 0.08), ("per_perfect", 0, 5, 0.03),
+                           ("max_multiplier", 1, 1000, 20), ("base_speed", 0.1, 5, 0.55), ("max_speed", 0.1, 8, 1.5),
+                           ("speed_step", 0, 1, 0.025), ("perfect_tolerance", 0.005, 0.3, 0.05),
+                           ("mp_platform_fee_percent", 0, 50, 10), ("mp_play_window_seconds", 30, 3600, 180),
+                           ("mp_bot_fill_seconds", 3, 3600, 20)]:
+        fix("stack_config", key, lo, hi, d)
+    sc = data.get("stack_config")
+    if isinstance(sc, dict):
+        if "mp_sizes" in sc:
+            sc["mp_sizes"] = sorted({int(max(2, min(4, _num(x, 2)))) for x in (sc.get("mp_sizes") or [2])}) or [2]
+        if "mp_entry_fees" in sc:
+            sc["mp_entry_fees"] = [round(_num(x, 50), 2) for x in (sc.get("mp_entry_fees") or []) if _num(x, 0) > 0] or [50]
+    return bad
 
 
 async def _load_user_with_balance(user: dict, bet: float) -> dict:
@@ -246,6 +302,27 @@ async def _record_game(user_id: str, mode: str, entry: float, prize: float, won:
     return rec
 
 
+async def _forfeit_active(user_id: str, mode: str):
+    """A new round replaces an unfinished one: settle the old one as lost (seed revealed, game recorded)."""
+    for s in await S.db.game_sessions.find({"user_id": user_id, "mode": mode, "status": "active"}).to_list(10):
+        res = await S.db.game_sessions.update_one({"id": s["id"], "status": "active"}, {"$set": {"status": "forfeited"}})
+        if res.modified_count != 1:
+            continue
+        if mode == "vortex":
+            total = round(s.get("collected", 0.0), 2)
+            await _record_game(user_id, "vortex", s["entry_fee"], total, won=total > s["entry_fee"],
+                               target=len(s["table"]["stages"]), recorded=s["stage"], credit_now=0.0,
+                               details={"theme": s["theme"], "stages_cleared": s["stage"], "forfeited": True,
+                                        "partial_collected": total, "segments": s["table"]["segments"],
+                                        "lose": [len(x["lose_slots"]) for x in s["table"]["stages"]]},
+                               fair=fair_public(s["fair"], True))
+        else:
+            await _record_game(user_id, "chicken", s["entry_fee"], 0.0, False, target=s["steps"], recorded=s["step"],
+                               details={"difficulty": s["difficulty"], "hazard_step": s["hazard_step"], "forfeited": True,
+                                        "steps": s["steps"], "hazard": s["hazard"]},
+                               fair=fair_public(s["fair"], True))
+
+
 # ---------------------------------------------------------------------------
 # Vortex Spin
 # ---------------------------------------------------------------------------
@@ -295,8 +372,7 @@ async def vortex_start(body: VortexStartReq, user: dict = Depends(S.get_current_
     bet = round(float(body.bet), 2)
     _bet_checks(vc, bet, "vortex")
     u = await _load_user_with_balance(user, bet)
-    await S.db.game_sessions.update_many({"user_id": str(user["_id"]), "mode": "vortex", "status": "active"},
-                                         {"$set": {"status": "abandoned"}})
+    await _forfeit_active(str(user["_id"]), "vortex")
     fair = await consume_pf(user)
     table = vortex_table(vc, theme)
     floats = pf_floats(fair["server_seed"], fair["client_seed"], fair["nonce"], len(table["stages"]))
@@ -321,9 +397,10 @@ async def _vortex_settle(s: dict, user: dict, final_credit: float, lost: bool):
     await S.db.game_sessions.update_one({"id": s["id"]}, {"$set": {
         "status": "completed", "prize_awarded": total, "lost": lost, "stopped_at": S.now_iso()}})
     rec = await _record_game(
-        s["user_id"], "vortex", s["entry_fee"], total, won=total > 0, target=len(s["table"]["stages"]),
+        s["user_id"], "vortex", s["entry_fee"], total, won=total > s["entry_fee"], target=len(s["table"]["stages"]),
         recorded=s["stage"], credit_now=final_credit,
         details={"theme": s["theme"], "stages_cleared": s["stage"], "partial_collected": round(s["collected"], 2),
+                 "segments": s["table"]["segments"], "lose": [len(x["lose_slots"]) for x in s["table"]["stages"]],
                  "landings": s["landings"][: s["stage"] + (1 if lost else 0)]},
         fair=fair_public(s["fair"], True))
     return total, rec
@@ -379,6 +456,16 @@ async def vortex_collect(body: VortexCollectReq, user: dict = Depends(S.get_curr
             "wallet": await S.get_wallet(user)}
 
 
+@router.get("/games/vortex/active")
+async def vortex_active(user: dict = Depends(S.get_current_user)):
+    s = await S.db.game_sessions.find_one({"user_id": str(user["_id"]), "mode": "vortex", "status": "active"})
+    if not s:
+        return {"active": False}
+    return {"active": True, "session_id": s["id"], "token": s["token"], "entry_fee": s["entry_fee"], "theme": s["theme"],
+            "table": s["table"], "stage": s["stage"], "at_risk": s["at_risk"], "collected": s["collected"],
+            "partial_done_stage": s.get("partial_done_stage", -1), "fair": fair_public(s["fair"], False)}
+
+
 # ---------------------------------------------------------------------------
 # Chicken Quest
 # ---------------------------------------------------------------------------
@@ -409,8 +496,7 @@ async def chicken_start(body: ChickenStartReq, user: dict = Depends(S.get_curren
     bet = round(float(body.bet), 2)
     _bet_checks(cc, bet, "chicken")
     u = await _load_user_with_balance(user, bet)
-    await S.db.game_sessions.update_many({"user_id": str(user["_id"]), "mode": "chicken", "status": "active"},
-                                         {"$set": {"status": "abandoned"}})
+    await _forfeit_active(str(user["_id"]), "chicken")
     fair = await consume_pf(user)
     steps = int(cc["modes"][mode]["steps"])
     p = _clamp_hazard(cc["modes"][mode]["hazard"])
@@ -438,9 +524,18 @@ async def _chicken_settle(s: dict, won: bool, step: int):
         "status": "completed", "won": won, "prize_awarded": prize, "step": step, "stopped_at": S.now_iso()}})
     rec = await _record_game(s["user_id"], "chicken", s["entry_fee"], prize, won, target=s["steps"],
                              recorded=step, details={"difficulty": s["difficulty"], "hazard_step": s["hazard_step"],
-                                                     "multiplier": mult},
+                                                     "multiplier": mult, "steps": s["steps"], "hazard": s["hazard"]},
                              fair=fair_public(s["fair"], True))
     return prize, mult, rec
+
+
+@router.get("/games/chicken/active")
+async def chicken_active(user: dict = Depends(S.get_current_user)):
+    s = await S.db.game_sessions.find_one({"user_id": str(user["_id"]), "mode": "chicken", "status": "active"})
+    if not s:
+        return {"active": False}
+    return {"active": True, "session_id": s["id"], "token": s["token"], "entry_fee": s["entry_fee"], "mode": s["difficulty"],
+            "steps": s["steps"], "multipliers": s["multipliers"], "step": s["step"], "fair": fair_public(s["fair"], False)}
 
 
 @router.post("/games/chicken/step")
@@ -486,6 +581,12 @@ def _tri(x: float) -> float:
     return -1.0 + 2.0 * u if u < 1.0 else 3.0 - 2.0 * u
 
 
+def _block_params(eng: dict, i: int):
+    phases = eng.get("phases") or [0.0]
+    jitter = eng.get("jitter") or [1.0]
+    return float(phases[i % len(phases)]), float(jitter[i % len(jitter)])
+
+
 def stack_replay(eng: dict, taps: List[int], target: Optional[int] = None) -> dict:
     rng = float(eng["range"])
     tol = float(eng["perfect_tolerance"])
@@ -494,18 +595,22 @@ def stack_replay(eng: dict, taps: List[int], target: Optional[int] = None) -> di
     elapsed = 0
     failed = False
     reached_at = None
+    perfect_offsets: List[float] = []
     for i, t in enumerate(taps):
         t = int(t)
         elapsed += t
         axis = i % 2
         speed = min(float(eng["max_speed"]), float(eng["base_speed"]) + i * float(eng["speed_step"]))
-        off = rng * _tri(t / 1000.0 * speed)
+        ph, jit = _block_params(eng, i)
+        speed = speed * jit
+        off = rng * _tri(t / 1000.0 * speed + ph)
         key_c, key_s = ("x", "w") if axis == 0 else ("z", "d")
         size = top[key_s]
         new = dict(top)
         if abs(off) <= tol:
             combo += 1
             perfects += 1
+            perfect_offsets.append(abs(off))
             if combo >= int(eng["combo_growth_after"]):
                 new[key_s] = min(1.0, size + float(eng["combo_growth"]))
         else:
@@ -522,8 +627,10 @@ def stack_replay(eng: dict, taps: List[int], target: Optional[int] = None) -> di
         if target and height >= target and reached_at is None:
             reached_at = elapsed
             break
+    # machine-precision detector: humans land "perfects" spread across the tolerance window
+    bot_like = len(perfect_offsets) >= 8 and (sum(perfect_offsets) / len(perfect_offsets)) < tol * 0.12
     return {"height": height, "perfects": perfects, "max_combo": max_combo, "failed": failed,
-            "elapsed_ms": elapsed, "reached_at_ms": reached_at}
+            "elapsed_ms": elapsed, "reached_at_ms": reached_at, "bot_like": bot_like}
 
 
 def stack_endless_mult(sc: dict, height: int, perfects: int) -> float:
@@ -534,7 +641,12 @@ def stack_endless_mult(sc: dict, height: int, perfects: int) -> float:
 
 
 def _engine(sc: dict) -> dict:
-    return {k: sc[k] for k in ENGINE_KEYS}
+    eng = {k: sc[k] for k in ENGINE_KEYS}
+    rnd = random.SystemRandom()
+    # per-session random start phase & speed jitter for every block (defeats fixed-formula scripts)
+    eng["phases"] = [round(rnd.uniform(0.0, 2.0), 4) for _ in range(300)]
+    eng["jitter"] = [round(rnd.uniform(0.9, 1.12), 4) for _ in range(300)]
+    return eng
 
 
 class StackStartReq(BaseModel):
@@ -602,6 +714,7 @@ async def stack_finish(body: StackFinishReq, user: dict = Depends(S.get_current_
     flagged = _validate_taps(s, body.taps)
     ch = s.get("challenge")
     r = stack_replay(s["engine"], body.taps, target=ch["height"] if ch else None)
+    flagged = flagged or r.get("bot_like", False)
     if flagged:
         r["height"], r["perfects"] = 0, 0
     await S.db.game_sessions.update_one({"id": s["id"]}, {"$set": {
@@ -649,6 +762,12 @@ def _annotate(room: dict, uid: str) -> dict:
         p["is_me"] = p["user_id"] == uid
     me = next((p for p in pub["players"] if p["is_me"]), None)
     pub["me_started"] = bool(me and me["started"])
+    # don't reveal opponents' scores before you have submitted your own run
+    if pub["status"] == "LIVE" and not (me and me.get("submitted")):
+        for p in pub["players"]:
+            if not p["is_me"]:
+                p.pop("height", None)
+                p.pop("perfects", None)
     return pub
 
 
@@ -682,7 +801,7 @@ async def _go_live(room: dict, sc: dict):
 
 async def _mp_submit(room_id: str, user_id: str, r: dict):
     await S.db.stack_rooms.update_one(
-        {"id": room_id, "players.user_id": user_id},
+        {"id": room_id, "status": "LIVE", "players.user_id": user_id},
         {"$set": {"players.$.submitted": True, "players.$.height": r["height"],
                   "players.$.perfects": r["perfects"], "players.$.finished_at": S.now_iso()}})
     await _maybe_settle(room_id)
@@ -845,6 +964,8 @@ async def stack_room_play(room_id: str, user: dict = Depends(S.get_current_user)
         raise HTTPException(status_code=409, detail="Room is not live yet")
     if me.get("submitted") or me.get("session_id"):
         raise HTTPException(status_code=409, detail="You already played this room")
+    if room.get("deadline") and datetime.fromisoformat(room["deadline"]) <= _now():
+        raise HTTPException(status_code=409, detail="The play window for this room has closed")
     session = {
         "id": str(uuid.uuid4()), "user_id": uid, "mode": "stack", "type": "mp", "challenge": None,
         "entry_fee": room["entry_fee"], "engine": _engine(sc), "room_id": room_id,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Flame, Droplets, Mountain, Loader2, HandCoins, Split, RotateCw, Skull, Tornado } from "lucide-react";
@@ -8,6 +8,9 @@ import { showWin } from "@/components/WinCelebration";
 import { BetBox, apiErrorPopup } from "@/components/BetBox";
 import { FairnessPanel } from "@/components/FairnessPanel";
 import { fbTrack } from "@/lib/siteConfig";
+import { Vortex3D } from "@/components/Vortex3D";
+import { MuteButton } from "@/components/MuteButton";
+import { sfx } from "@/lib/sfx";
 
 const THEMES = {
   earth: { icon: Mountain, bg: "from-[#1c1407] via-[#0d1608] to-black", accent: "#8bd36b", safe: ["#3d6b29", "#5d8f3b"], glow: "rgba(139,211,107,.45)", particle: "earth", swirl: "conic-gradient(from 0deg, transparent, rgba(139,211,107,.35), transparent 40%, rgba(192,138,62,.35), transparent 75%)" },
@@ -15,77 +18,12 @@ const THEMES = {
   fire: { icon: Flame, bg: "from-[#250803] via-[#1a0604] to-black", accent: "#ff6a2a", safe: ["#b3361a", "#e0561f"], glow: "rgba(255,106,42,.5)", particle: "fire", swirl: "conic-gradient(from 0deg, transparent, rgba(255,106,42,.45), transparent 40%, rgba(255,210,122,.3), transparent 75%)" },
 };
 
-function Particles({ kind }) {
-  const items = useMemo(() => Array.from({ length: 18 }, (_, i) => ({
-    left: `${(i * 53) % 100}%`, size: 4 + ((i * 7) % 10), dur: 3 + ((i * 13) % 50) / 10, delay: ((i * 17) % 40) / 10,
-    top: kind === "earth" ? `${10 + ((i * 37) % 80)}%` : undefined,
-  })), [kind]);
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {items.map((p, i) => (
-        <span key={i} className={`absolute vx-particle-${kind}`}
-          style={{ left: p.left, bottom: kind === "earth" ? undefined : "-10px", top: p.top, width: p.size * (kind === "earth" ? 1.6 : 1), height: p.size * (kind === "earth" ? 1.3 : 1), animationDuration: `${p.dur}s`, animationDelay: `${p.delay}s` }} />
-      ))}
-    </div>
-  );
-}
-
-function arcPath(r, a0, a1) {
-  const rad = (a) => ((a - 90) * Math.PI) / 180;
-  const [x0, y0, x1, y1] = [r * Math.cos(rad(a0)), r * Math.sin(rad(a0)), r * Math.cos(rad(a1)), r * Math.sin(rad(a1))];
-  return `M0 0 L${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1} Z`;
-}
-
-function Wheel({ segments, loseSlots, rotation, theme, centerLabel, spinning, stageNo }) {
-  const t = THEMES[theme];
-  const step = 360 / segments;
-  return (
-    <div className="relative mx-auto aspect-square w-full max-w-[340px]" data-testid="vortex-wheel">
-      <div className="absolute -inset-6 rounded-full vx-swirl opacity-80 blur-md" style={{ background: t.swirl }} />
-      <div className="absolute -inset-2 rounded-full" style={{ boxShadow: `0 0 60px ${t.glow}, inset 0 0 30px ${t.glow}` }} />
-      <div className="absolute left-1/2 -top-3 z-20 -translate-x-1/2">
-        <div className="h-0 w-0 border-l-[14px] border-r-[14px] border-t-[26px] border-l-transparent border-r-transparent drop-shadow-[0_0_8px_rgba(255,255,255,.7)]" style={{ borderTopColor: "#fff" }} />
-      </div>
-      <motion.svg viewBox="-150 -150 300 300" className="relative z-10 h-full w-full"
-        animate={{ rotate: rotation }} transition={{ duration: spinning ? 2.8 : 0, ease: [0.12, 0.8, 0.18, 1] }}>
-        <circle r="148" fill="#050505" stroke={t.accent} strokeWidth="3" />
-        {Array.from({ length: segments }, (_, j) => {
-          const lose = loseSlots.includes(j);
-          const mid = (j + 0.5) * step;
-          const rad = ((mid - 90) * Math.PI) / 180;
-          return (
-            <g key={j}>
-              <path d={arcPath(140, j * step, (j + 1) * step)} fill={lose ? "#140404" : t.safe[j % 2]} stroke="#000" strokeWidth="2" />
-              <text x={Math.cos(rad) * 102} y={Math.sin(rad) * 102} textAnchor="middle" dominantBaseline="central"
-                fontSize="18" fill={lose ? "#ff3b3b" : "#ffffff"} transform={`rotate(${mid} ${Math.cos(rad) * 102} ${Math.sin(rad) * 102})`}>
-                {lose ? "✕" : "◆"}
-              </text>
-            </g>
-          );
-        })}
-        {Array.from({ length: segments }, (_, j) => {
-          const rad = ((j * step - 90) * Math.PI) / 180;
-          return <circle key={`d${j}`} cx={Math.cos(rad) * 144} cy={Math.sin(rad) * 144} r="3" fill={t.accent} />;
-        })}
-      </motion.svg>
-      <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-        <div className="h-28 w-28 rounded-full border-2 flex flex-col items-center justify-center bg-black/85 backdrop-blur"
-          style={{ borderColor: t.accent, boxShadow: `0 0 30px ${t.glow}` }}>
-          <t.icon className="h-6 w-6" style={{ color: t.accent }} />
-          <div className="font-mono-pz font-extrabold text-xl" data-testid="vortex-center-mult">{centerLabel}</div>
-          <div className="text-[10px] uppercase tracking-widest text-white/50">Stage {stageNo}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function VortexSpin() {
   const [cfg, setCfg] = useState(null);
   const [theme, setTheme] = useState("earth");
   const [bet, setBet] = useState(20);
   const [game, setGame] = useState(null); // {session_id, token, table, stage, at_risk, collected, status}
-  const [rotation, setRotation] = useState(0);
+  const wheelRef = useRef(null);
   const [spinning, setSpinning] = useState(false);
   const [wheelStage, setWheelStage] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -107,12 +45,7 @@ export default function VortexSpin() {
   const pct = cfg?.partial_collect_percent ?? 50;
   const t = THEMES[theme];
 
-  const spinTo = (landing) => {
-    const center = (landing + 0.5) * (360 / segs);
-    const base = rotation - (rotation % 360);
-    setSpinning(true);
-    setRotation(base + 360 * 6 + (360 - center));
-  };
+  const spinTo = (landing) => { setSpinning(true); wheelRef.current?.spinTo(landing, 2800); };
 
   const doSpin = async (g) => {
     setBusy(true);
@@ -123,16 +56,19 @@ export default function VortexSpin() {
       setTimeout(() => {
         setSpinning(false);
         if (!data.survived) {
+          wheelRef.current?.lose();
           setShake(true); setTimeout(() => setShake(false), 600);
           setGame((x) => ({ ...x, status: "lost", at_risk: 0 }));
           setLastFair(data.fair); setSeedKey((k) => k + 1);
           window.dispatchEvent(new Event("wallet:refresh"));
           setTimeout(() => showPopup({ type: "warning", title: "The vortex broke!", message: data.total_prize > 0 ? `You kept ${data.total_prize} coins from partial collects.` : "Spin again and read the elements." }), 400);
         } else if (data.finished) {
+          wheelRef.current?.win();
           setGame((x) => ({ ...x, stage: data.stage, at_risk: 0, status: "won" }));
           setLastFair(data.fair); setSeedKey((k) => k + 1);
           window.dispatchEvent(new Event("wallet:refresh")); showWin(data.total_prize);
         } else {
+          sfx.gem();
           setGame((x) => ({ ...x, stage: data.stage, at_risk: data.at_risk }));
           setWheelStage(data.stage);
         }
@@ -160,10 +96,11 @@ export default function VortexSpin() {
       const { data } = await api.post("/games/vortex/collect", { session_id: game.session_id, token: game.token, partial });
       window.dispatchEvent(new Event("wallet:refresh"));
       if (data.finished) {
+        wheelRef.current?.win(); sfx.coin();
         setGame((x) => ({ ...x, status: "won", at_risk: 0 })); setLastFair(data.fair); setSeedKey((k) => k + 1);
         showWin(data.total_prize);
       } else {
-        setGame((x) => ({ ...x, at_risk: data.at_risk, collected: data.collected })); setPartialStage(game.stage);
+        sfx.coin(); setGame((x) => ({ ...x, at_risk: data.at_risk, collected: data.collected })); setPartialStage(game.stage);
         showPopup({ type: "success", title: `+${data.collected_now} coins banked`, message: `${data.at_risk} still riding the vortex.` });
       }
     } catch (e) { showPopup({ type: "warning", title: "Can't collect", message: formatApiError(e.response?.data?.detail) }); }
@@ -179,6 +116,7 @@ export default function VortexSpin() {
         <Link to="/home" data-testid="vortex-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Tornado className="h-5 w-5 text-pazer-red" />
         <h1 className="font-display font-bold text-2xl tracking-tight">Vortex Spin</h1>
+        <MuteButton />
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
@@ -197,7 +135,6 @@ export default function VortexSpin() {
       </div>
 
       <div className={`relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b ${t.bg} p-5 ${shake ? "vx-shake" : ""}`}>
-        <Particles kind={t.particle} />
         <div className="relative flex items-center justify-between gap-1 mb-6" data-testid="vortex-stages">
           {stages.map((s, i) => {
             const cleared = game && i < game.stage;
@@ -209,13 +146,20 @@ export default function VortexSpin() {
                   style={current ? { boxShadow: `0 0 16px ${t.glow}`, background: `${t.accent}33` } : {}}>
                   {s.multiplier}×
                 </motion.div>
-                <span className="text-[10px] text-white/40 mt-1">{Math.round(s.survival * 100)}% safe</span>
+                <span className="text-[11px] text-white/70 mt-1">{Math.round(s.survival * 100)}% safe</span>
               </div>
             );
           })}
         </div>
-        <Wheel segments={segs} loseSlots={loseSlots} rotation={rotation} theme={theme} spinning={spinning}
-          centerLabel={`${(curMult || 1).toFixed(2)}×`} stageNo={Math.min((game?.stage ?? 0) + (active ? 1 : 0), stages.length) || 1} />
+        <div className="relative mx-auto aspect-square w-full max-w-[400px]">
+          <Vortex3D ref={wheelRef} segments={segs} loseSlots={loseSlots} theme={theme} />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="flex flex-col items-center rounded-full bg-black/70 px-3 py-1">
+              <div className="font-mono-pz font-extrabold text-xl" data-testid="vortex-center-mult">{`${(curMult || 1).toFixed(2)}×`}</div>
+              <div className="text-[10px] uppercase tracking-widest text-white/70">Stage {Math.min((game?.stage ?? 0) + (active ? 1 : 0), stages.length) || 1}</div>
+            </div>
+          </div>
+        </div>
         <AnimatePresence>
           {game && game.status !== "active" && !spinning && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} data-testid="vortex-result"

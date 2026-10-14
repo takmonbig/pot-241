@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plane, Coins, Loader2, ArrowLeft, Zap } from "lucide-react";
+import { MuteButton } from "@/components/MuteButton";
 import api, { formatApiError } from "@/lib/api";
 import { AviatorCanvas } from "@/components/AviatorCanvas";
 import { showPopup } from "@/components/CenterPopup";
@@ -120,6 +121,7 @@ export default function Aviator() {
         <Link to="/home" data-testid="aviator-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Plane className="h-5 w-5 text-pazer-red" />
         <h1 className="font-display font-bold text-2xl tracking-tight">Aviator</h1>
+        <MuteButton />
       </div>
       <History list={hist} />
 

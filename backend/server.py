@@ -1837,6 +1837,10 @@ class ConfigUpdate(BaseModel):
 @api.put("/admin/config")
 async def admin_update_config(body: ConfigUpdate, admin: dict = Depends(require_admin)):
     body.data.pop("id", None)
+    import games_extra as _gx
+    bad = _gx.sanitize_extra_config(body.data)
+    if bad:
+        raise HTTPException(status_code=400, detail=f"Invalid value for: {', '.join(bad)}")
     await db.config.update_one({"id": "global"}, {"$set": body.data}, upsert=True)
     await db.audit_logs.insert_one({
         "id": str(uuid.uuid4()), "admin_id": str(admin["_id"]),

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Castle, Coins, Loader2, ArrowLeft, Gem, Bomb, HandCoins } from "lucide-react";
+import { Castle, Coins, Loader2, ArrowLeft, HandCoins } from "lucide-react";
 import api, { formatApiError } from "@/lib/api";
 import { showPopup } from "@/components/CenterPopup";
 import { showWin } from "@/components/WinCelebration";
 import { fbTrack } from "@/lib/siteConfig";
+import { Tower3D } from "@/components/Tower3D";
+import { MuteButton } from "@/components/MuteButton";
+import { sfx } from "@/lib/sfx";
 
 const QUICK = [20, 50, 100, 200, 500];
 const DIFFS = ["easy", "medium", "hard"];
@@ -14,47 +16,6 @@ const calcMults = (cols, bombs, rows, he) => {
   const step = cols / Math.max(1, cols - bombs), k = 1 - Math.min(0.5, he / 100);
   let cur = 1; return Array.from({ length: rows }, () => { cur *= step; return Math.round(cur * k * 100) / 100; });
 };
-
-function Tile({ state, onClick, active, testid }) {
-  const base = "relative h-12 sm:h-14 rounded-xl border flex items-center justify-center transition-colors";
-  const look = {
-    gem: "bg-gradient-to-b from-emerald-400/40 to-emerald-700/30 border-emerald-400/60",
-    bomb: "bg-gradient-to-b from-pazer-red/60 to-red-900/60 border-pazer-red",
-    ghost: "bg-black/40 border-pazer-red/30 opacity-70",
-    idle: active ? "bg-gradient-to-b from-white/15 to-white/5 border-orange-400/60 hover:from-orange-400/40 cursor-pointer" : "bg-white/[0.04] border-white/10",
-  }[state];
-  return (
-    <motion.button whileTap={active ? { scale: 0.9 } : {}} disabled={!active} onClick={onClick} data-testid={testid}
-      className={`${base} ${look}`} style={active ? { boxShadow: "0 0 18px rgba(255,120,40,0.25)" } : {}}>
-      {state === "gem" && <motion.span initial={{ scale: 0, rotate: -30 }} animate={{ scale: 1, rotate: 0 }}><Gem className="h-6 w-6 text-emerald-300" /></motion.span>}
-      {(state === "bomb" || state === "ghost") && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }}><Bomb className="h-6 w-6 text-white" /></motion.span>}
-    </motion.button>
-  );
-}
-
-function TowerGrid({ rows, cols, mults, game, bombs, picks, onPick }) {
-  return (
-    <div className="space-y-2" data-testid="tower-grid">
-      {Array.from({ length: rows }, (_, i) => rows - 1 - i).map((r) => {
-        const active = game?.status === "active" && game.row === r;
-        const passed = game && r < game.row;
-        return (
-          <div key={r} className={`flex items-center gap-2 rounded-2xl p-1.5 transition-colors ${active ? "bg-orange-500/10 ring-1 ring-orange-400/40" : ""}`} data-testid={`tower-row-${r}`}>
-            <div className={`w-16 shrink-0 text-right font-mono-pz text-sm font-bold ${passed ? "text-emerald-300" : active ? "text-orange-300" : "text-white/35"}`}>{mults[r]?.toFixed(2)}x</div>
-            <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
-              {Array.from({ length: cols }, (_, c) => {
-                const picked = picks[r] === c;
-                const isBomb = bombs?.[r]?.includes(c);
-                const state = picked ? (isBomb ? "bomb" : "gem") : isBomb ? "ghost" : "idle";
-                return <Tile key={c} state={state} active={active} onClick={() => onPick(c)} testid={`tower-tile-${r}-${c}`} />;
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export default function Tower() {
   const [cfg, setCfg] = useState(null);
@@ -115,7 +76,7 @@ export default function Tower() {
     try {
       const { data } = await api.post("/games/tower/cashout", { session_id: game.session_id, nonce: game.nonce });
       setBombs(data.bombs_layout); setGame((g) => ({ ...g, status: "won" }));
-      window.dispatchEvent(new Event("wallet:refresh")); showWin(data.prize);
+      sfx.coin(); window.dispatchEvent(new Event("wallet:refresh")); showWin(data.prize);
     } catch (e) { showPopup({ type: "warning", title: "Can't cash out", message: formatApiError(e.response?.data?.detail) }); }
     finally { setBusy(false); }
   };
@@ -126,6 +87,7 @@ export default function Tower() {
         <Link to="/home" data-testid="tower-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Castle className="h-5 w-5 text-pazer-red" />
         <h1 className="font-display font-bold text-2xl tracking-tight">Tower</h1>
+        <MuteButton />
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">
@@ -137,8 +99,8 @@ export default function Tower() {
         ))}
       </div>
 
-      <div className="rounded-3xl border border-pazer-red/25 bg-gradient-to-b from-[#1a0508] to-black/60 p-3 sm:p-4">
-        <TowerGrid rows={rows} cols={cols} mults={mults} game={game} bombs={bombs} picks={picks} onPick={pick} />
+      <div className="rounded-3xl overflow-hidden border border-pazer-red/25 bg-[radial-gradient(ellipse_at_top,#2a0a10,#050203_70%)]">
+        <Tower3D rows={rows} cols={cols} mults={mults} activeRow={active ? game.row : -1} picks={picks} bombs={bombs} status={game?.status || "idle"} onPick={pick} />
       </div>
 
       <div className="mt-5 rounded-3xl pz-glass p-5 space-y-4">

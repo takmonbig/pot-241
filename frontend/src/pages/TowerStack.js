@@ -9,18 +9,8 @@ import { BetBox, apiErrorPopup } from "@/components/BetBox";
 import { StackScene } from "@/components/StackScene";
 import { initialState, offsetAt, placeBlock, endlessMultiplier } from "@/lib/stackEngine";
 import { fbTrack } from "@/lib/siteConfig";
-
-let audioCtx;
-function blip(freq, dur = 0.08, vol = 0.08) {
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-    o.type = "triangle"; o.frequency.value = freq; g.gain.value = vol;
-    o.connect(g); g.connect(audioCtx.destination);
-    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
-    o.start(); o.stop(audioCtx.currentTime + dur);
-  } catch { /* audio not available */ }
-}
+import { MuteButton } from "@/components/MuteButton";
+import { sfx } from "@/lib/sfx";
 
 const TABS = [
   { id: "endless", label: "Endless", icon: InfinityIcon },
@@ -75,7 +65,7 @@ export default function TowerStack() {
       const { data } = await api.post("/games/stack/finish", { session_id: r.session.session_id, token: r.session.token, taps: r.taps });
       setResult({ ...data, kind: r.kind, challenge: r.session.challenge });
       window.dispatchEvent(new Event("wallet:refresh"));
-      if (data.won && data.prize > 0) showWin(data.prize);
+      if (data.won && data.prize > 0) showWin(data.prize); else if (!data.won) sfx.lose();
       if (r.kind === "mp") loadRooms();
     } catch (e) { showPopup({ type: "warning", title: "Couldn't submit run", message: formatApiError(e.response?.data?.detail) }); }
     finally { setPhase("done"); }
@@ -102,7 +92,7 @@ export default function TowerStack() {
     if (!res.ok) {
       sceneRef.current?.hideMoving();
       sceneRef.current?.addFalling(res.cut, level);
-      blip(140, 0.3, 0.12);
+      sfx.crash();
       finishRun();
       return;
     }
@@ -110,9 +100,9 @@ export default function TowerStack() {
     if (res.cut) sceneRef.current?.addFalling(res.cut, level);
     if (res.perfect) {
       sceneRef.current?.perfectFx(res.placed, level);
-      blip(520 + res.state.combo * 70, 0.12, 0.1);
+      sfx.perfect(res.state.combo);
       setFlash({ text: res.state.combo >= 2 ? `PERFECT ×${res.state.combo}` : "PERFECT", key: Date.now() });
-    } else blip(300, 0.06, 0.06);
+    } else sfx.place(0);
     r.st = res.state;
     setHud({ height: res.state.height, perfects: res.state.perfects, combo: res.state.combo });
     const ch = r.session.challenge;
@@ -174,7 +164,7 @@ export default function TowerStack() {
         <Link to="/home" data-testid="stack-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Layers className="h-5 w-5 text-pazer-red" />
         <h1 className="font-display font-bold text-2xl tracking-tight">Tower Stack</h1>
-        <span className="ml-auto rounded-full bg-emerald-500/15 text-emerald-300 text-[11px] px-2.5 py-1 font-semibold">Skill game</span>
+        <MuteButton /><span className="rounded-full bg-emerald-500/15 text-emerald-300 text-[11px] px-2.5 py-1 font-semibold">Skill game</span>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-4">

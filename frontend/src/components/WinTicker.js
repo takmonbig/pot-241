@@ -1,3 +1,4 @@
+import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Trophy } from "lucide-react";
@@ -31,7 +32,8 @@ export function WinTicker() {
     const i = setInterval(() => setItem(make()), 5000);
     return () => clearInterval(i);
   }, []);
-  if (gameActive) return null;
+  const { pathname } = useLocation();
+  if (gameActive || pathname.startsWith("/games/")) return null;
   return (
     <div className="fixed bottom-[130px] inset-x-0 z-30 pointer-events-none" data-testid="win-ticker">
       <div className="mx-auto max-w-md px-3">

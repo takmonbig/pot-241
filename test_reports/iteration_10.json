@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 10: tested the 3 new games (Vortex Spin, Chicken Quest, Tower Stack solo and versus), the provably-fair system, the Fairness page, admin Game Config, and regression of Aviator/Tower/Stopwatch. Backend: 18/18 new pytest cases pass (tests/test_vortex_chicken_stack.py). They cover: fair seed and client-seed validation; sha256(revealed seed) matching the pre-round hash; nonce going up by 1 per round; HMAC float determinism that reproduces vortex landings and chicken hazard_step; vortex partial collect (50%, once per stage, second call 400), full collect, lose path, collect before spin 400, wrong token 403, action after finish 409, min bet and insufficient balance 400; chicken collect at step 0 400, payout bet*mult, after-finish 409; stack endless payout formula, below min_height pays 0, anti-cheat flags (sum of taps too high, tap under 100ms), timed sprint win 2x and fail; admin disable gives 403 and re-enable gives 200 for all 3 games (configs re-enabled and confirmed); non-admin PUT config rejected; versus full flow: 6 open rooms, join debit, double join 409, play before LIVE 409, bot fill to LIVE about 20s later, play with no extra debit, second play 409, a 30-perfect run beats the bots, COMPLETED with prize 90 credited, room shows in recent. Regression test_aviator_tower.py 9/9 pass. Frontend (mobile 390px and desktop): hub shows 6 cards and the fairness link. Vortex: start+spin animates, partial collect banked 11.52 of 23.04 then the button disables, collect; header wallet math was exact (10427.4 + 11.52 + 13.27 = 10452.19). Fair panel shows the revealed seed and next hash. Chicken: medium mode has 22 lanes, multipliers 1.1/1.25/1.42 are correct, collected 28.40 at lane 3, result shows the trap lane, wallet refreshed. Fairness: the verify link auto-verifies, the Verify button in the round list shows 'Hash matches', and a tampered seed shows 'Hash does NOT match'. Tower Stack: the three.js canvas renders. Endless run with injected Space presses: height 8, 3 perfects, 0.73x paid 14.60 and wallet refreshed correctly. Timed tab shows the 3 challenges and the timer counts down. Versus UI: join, OPEN, then LIVE about 25s later with a practice bot labelled, Play your run, run submitted, standings show (you) height 8. Admin Game Config shows all 3 sections, and Save persisted min_bet 25 then was reverted to 20. No page errors seen.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "/api/games/stack/finish", "issue": "The Tower Stack engine is fully deterministic and its parameters are public (start response, /games/extra/config, rules page). Perfect tap timings are simply round(500/min(max_speed, base_speed+i*speed_step)) at offset 0, so any script or auto-clicker gets 100% perfects with no skill. The only anti-cheat is sum(taps) <= real elapsed time + 2.5s, which a bot easily satisfies. Proven in tests: scripted runs always give all-perfect towers and win every timed challenge (Master 8x in about 18s) and every versus room. Endless reaches about 19-20x (the cap) in about 66s per run. Fix ideas: a per-session random phase/start offset and/or direction revealed only when a block spawns; server-issued per-block seeds; jitter checks (reject near-zero variance from perfect timing); a per-user cap on perfect rate.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "/api/games/vortex/start, /api/games/chicken/start", "issue": "Starting a new round silently sets any active session to 'abandoned'. The riding amount or bet is lost with no game record. The committed server seed of that round is never revealed (not in /fair/rounds), so the player can't verify it. There is also no resume endpoint, so a page refresh mid-round loses the round. Suggest: resume the active session, or auto-settle it as lost and record it with the seed revealed."},
+      {"endpoint": "/api/games/vortex (_record_game)", "issue": "won=total>0, so a round lost after a partial collect (or a payout below the bet) counts as stats.games_won."},
+      {"endpoint": "/api/admin/config", "issue": "There is no validation of vortex_config/chicken_config/stack_config. The admin Field uses parseFloat, so a cleared input sends null/NaN, e.g. min_bet:null. That makes _bet_checks compare float < None and raise a 500. Hazard, lose counts and steps are also not range-checked on the server."},
+      {"endpoint": "/api/games/stack/rooms/{id}/play + finish", "issue": "No deadline check: a player can call /play or /finish after the deadline. _mp_submit then writes height into an already COMPLETED room. The opponents' submitted heights (bots submit after 15s or more) are also visible to a player before they start their own run, so they know the target height."},
+      {"endpoint": "/api/fair/rounds + Fairness verify", "issue": "Verification recomputes with the CURRENT config (lose counts, hazards, steps), not the parameters stored with the round. After an admin config change, old rounds verify incorrectly. Store the table/params in the game record's fair/details and use them when verifying."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Vortex/Chicken verify link", "issue": "The FairnessPanel verify link does not pass the committed hash (h param), so the auto-verify from a game page never shows 'Hash matches the committed hash'. It only does when you come from the rounds list. The verify result also doesn't compare against the recorded result (landings/hazard_step).", "affected_selectors": ["[data-testid=vortex-fair-verify-link]", "[data-testid=chicken-fair-verify-link]", "[data-testid=fair-verify-result]"]}
+    ],
+    "design_issues": [
+      {"screen": "Vortex/Chicken/Stack pages (desktop 1920x1080 and mobile)", "issues": ["The floating 'Play with Friends' bar and the winner ticker cover the primary CTA (vortex-start-btn on desktop at first load) and the Provably Fair panel, so you have to scroll. With force-click, the verify link click actually landed on the bottom-nav 1v1 tab. Hide the floating bar on game pages or add enough bottom offset.", "The '83% safe' stage labels and the rules text are text-white/40 at about 10px: low contrast."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_vortex_chicken_stack.py", "/app/test_reports/pytest/pytest_iter10.xml"],
+  "action_items": [
+    "HIGH: Harden Tower Stack against scripted perfect taps (randomised per-session/per-block phase or direction, timing-variance checks). Currently a script wins every timed and versus game and gets about 20x in endless.",
+    "Handle abandoned Vortex/Chicken sessions: resume them or settle and record them, and reveal their server seed.",
+    "Validate admin vortex/chicken/stack config server-side (numbers, ranges, no null) to avoid 500s.",
+    "Versus: reject /play and /finish after the deadline; consider hiding opponent heights until you have submitted.",
+    "Store the per-round table/params in the fair record and use them in the Fairness verify; pass h=server_seed_hash in the verify link.",
+    "Fix the floating Play-with-Friends bar overlapping game CTAs and the fair panel."
+  ],
+  "critical_code_review_comments": [
+    "games_extra.py is 877 lines (>700). Split it into fair.py, vortex.py, chicken.py, stack.py, stack_rooms.py.",
+    "_vortex_settle/_chicken_settle mark won by prize>0 rather than prize>=bet.",
+    "vortex/chicken use cfg.get('vortex_config') without merging EXTRA_DEFAULTS (stack does merge), so a partial admin update could drop keys like themes/modes and raise KeyError.",
+    "pytest.ini forces -n 2 xdist. The shared test user means suites must run with -n 0, otherwise parallel classes interfere with balances and sessions."
+  ],
+  "updated_files": ["/app/backend/tests/test_vortex_chicken_stack.py"],
+  "success_rate": {"backend": "100% (18/18 new + 9/9 regression); 1 HIGH design/security issue", "frontend": "100% of tested flows functional; design overlap issue"},
+  "seed_data_creation": "Test player 8800112233 balance set to 10000 via mongo (timeup_database). Played several vortex/chicken/stack rounds and joined two versus rooms (50x2 via API, 100x2 via UI). Client seed set to 'TEST_seed-01'.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend && export REACT_APP_BACKEND_URL=... DB_NAME=timeup_database && pytest tests/test_vortex_chicken_stack.py -n 0 (about 2 min, versus test waits for bot fill and settle). Use -n 0 because the suites share one user. Onboarding guide on /home: click 'Next' then \"Let's Play\". For Tower Stack UI, inject Space keydowns from page.evaluate with in-page timing (wrap with asyncio.ensure_future before clicking start). Don't force-click elements under the floating Play-with-Friends bar: read the href and goto it instead."
+}

@@ -1,176 +1,184 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { createStage, addStudioLights, createParticles, THREE, glossy, metal, damp, rand } from "@/lib/three3d";
+import { sfx, hum } from "@/lib/sfx";
 
-const rand = (a, b) => a + Math.random() * (b - a);
-const STARS = Array.from({ length: 120 }, () => ({ x: Math.random(), y: Math.random() * 0.8, r: rand(0.4, 1.8), l: Math.floor(rand(0, 3)), p: rand(0, 6.28) }));
-const SPEED = [8, 22, 48];
-const ridge = (n, amp, seed) => Array.from({ length: n }, (_, i) => Math.sin(i * 0.9 + seed) * amp * 0.5 + Math.sin(i * 2.3 + seed * 3) * amp * 0.3 + amp);
+const SPEED = 3.2;
+const altOf = (m) => Math.log(Math.max(1, m)) * 5;
 
-const M1 = ridge(24, 40, 1), M2 = ridge(24, 26, 4);
+function skyTexture() {
+  const c = document.createElement("canvas"); c.width = 16; c.height = 512;
+  const g = c.getContext("2d"); const gr = g.createLinearGradient(0, 0, 0, 512);
+  gr.addColorStop(0, "#05010a"); gr.addColorStop(0.45, "#2a0614"); gr.addColorStop(0.62, "#8a1a1a"); gr.addColorStop(0.72, "#ff7a2a"); gr.addColorStop(0.8, "#2a0a08"); gr.addColorStop(1, "#050203");
+  g.fillStyle = gr; g.fillRect(0, 0, 16, 512);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
 
-function drawBackground(ctx, w, h, scroll, now) {
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, "#07020a"); g.addColorStop(0.55, "#1a0509"); g.addColorStop(1, "#3a0a0a");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-  const sun = ctx.createRadialGradient(w * 0.78, h * 0.78, 0, w * 0.78, h * 0.78, h * 0.6);
-  sun.addColorStop(0, "rgba(255,120,40,0.55)"); sun.addColorStop(0.35, "rgba(255,42,42,0.18)"); sun.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = sun; ctx.fillRect(0, 0, w, h);
-  for (const s of STARS) {
-    const x = (((s.x * w - scroll * SPEED[s.l]) % w) + w) % w;
-    ctx.globalAlpha = (0.35 + s.l * 0.2) * (0.6 + 0.4 * Math.sin(now / 500 + s.p));
-    ctx.fillStyle = s.l === 2 ? "#ffd2b0" : "#ffffff";
-    ctx.beginPath(); ctx.arc(x, s.y * h, s.r * (0.6 + s.l * 0.3), 0, 6.28); ctx.fill();
+function buildPlane() {
+  const p = new THREE.Group();
+  const paint = glossy(0xd8141f, { rough: 0.22 });
+  const white = glossy(0xf4f4f4, { rough: 0.25 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 2.3, 10, 28), paint);
+  body.rotation.z = Math.PI / 2; p.add(body);
+  const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.352, 0.352, 0.25, 28), white);
+  stripe.rotation.z = Math.PI / 2; stripe.position.x = -0.4; p.add(stripe);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.5, 28), metal(0xdcdcdc, 0.15));
+  nose.rotation.z = -Math.PI / 2; nose.position.x = 1.62; p.add(nose);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.08, 4.6), paint); wing.position.set(0.25, -0.05, 0); p.add(wing);
+  [-1, 1].forEach((s) => { const tip = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.1, 0.35), white); tip.position.set(0.25, -0.05, s * 2.2); p.add(tip); });
+  const tailW = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 1.5), paint); tailW.position.set(-1.35, 0.1, 0); p.add(tailW);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.07), paint); fin.position.set(-1.4, 0.45, 0); fin.rotation.z = -0.25; p.add(fin);
+  const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshPhysicalMaterial({ color: 0x6fc3ff, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.75, clearcoat: 1 }));
+  cockpit.scale.set(1.6, 1, 1); cockpit.position.set(0.55, 0.25, 0); p.add(cockpit);
+  const prop = new THREE.Group(); prop.position.x = 1.9; p.add(prop);
+  [0, Math.PI / 2].forEach((r) => { const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.5, 0.14), metal(0x222222, 0.4)); b.rotation.x = r; prop.add(b); });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.78, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.08, side: THREE.DoubleSide }));
+  disc.rotation.y = Math.PI / 2; prop.add(disc);
+  const wheels = [-0.7, 0.7].map((z) => { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 20), metal(0x111111, 0.6, 0.2)); w.rotation.x = Math.PI / 2; w.position.set(0.5, -0.55, z); p.add(w); return w; });
+  p.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  p.scale.setScalar(0.9);
+  return { p, prop, wheels };
+}
+
+function terrainChunk() {
+  const geo = new THREE.PlaneGeometry(60, 50, 48, 24);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i); const z = pos.getZ(i);
+    const far = Math.max(0, (-z - 4) / 20);
+    const h = (Math.sin(x * 0.21) * 1.6 + Math.sin(x * 0.53 + z * 0.3) * 0.9 + Math.cos(z * 0.4 + x * 0.11) * 1.2) * (0.4 + far * 2.4) + far * far * 6;
+    pos.setY(i, h);
   }
-  ctx.globalAlpha = 1;
-  drawRidge(ctx, w, h, M1, scroll * 14, h * 0.78, "rgba(60,8,12,0.9)");
-  drawRidge(ctx, w, h, M2, scroll * 34, h * 0.86, "rgba(25,3,6,0.95)");
-  drawGrid(ctx, w, h, scroll);
-}
-
-function drawRidge(ctx, w, h, pts, off, base, color) {
-  const seg = w / (pts.length - 2);
-  const o = off % seg, idx = Math.floor(off / seg);
-  ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, h);
-  for (let i = 0; i < pts.length; i++) ctx.lineTo(i * seg - o, base - pts[(i + idx) % pts.length]);
-  ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
-}
-
-function drawGrid(ctx, w, h, scroll) {
-  const top = h * 0.88;
-  ctx.strokeStyle = "rgba(255,60,40,0.18)"; ctx.lineWidth = 1;
-  for (let i = 0; i < 7; i++) {
-    const t = ((i + (scroll * 0.8) % 1) / 7);
-    const y = top + (h - top) * t * t;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-  }
-  for (let i = -8; i <= 8; i++) {
-    ctx.beginPath(); ctx.moveTo(w / 2 + i * 30, top); ctx.lineTo(w / 2 + i * 160, h); ctx.stroke();
-  }
-}
-
-function drawPlane(ctx, x, y, ang, now, s) {
-  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(s, s);
-  const glow = ctx.createRadialGradient(-6, 4, 0, -6, 4, 46);
-  glow.addColorStop(0, "rgba(255,90,40,0.45)"); glow.addColorStop(1, "rgba(255,42,42,0)");
-  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(-6, 4, 46, 0, 6.28); ctx.fill();
-  ctx.fillStyle = "#7a0c0c";
-  ctx.beginPath(); ctx.moveTo(-4, -2); ctx.lineTo(-18, -20); ctx.lineTo(-10, -20); ctx.lineTo(8, -2); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-26, -2); ctx.lineTo(-36, -16); ctx.lineTo(-30, -16); ctx.lineTo(-20, -3); ctx.closePath(); ctx.fill();
-  const body = ctx.createLinearGradient(0, -10, 0, 10);
-  body.addColorStop(0, "#ffd0b8"); body.addColorStop(0.3, "#ff4a2a"); body.addColorStop(0.75, "#c41212"); body.addColorStop(1, "#5a0606");
-  ctx.fillStyle = body;
-  ctx.beginPath(); ctx.moveTo(26, 0); ctx.bezierCurveTo(24, -9, 8, -10, -6, -7); ctx.lineTo(-32, -3); ctx.lineTo(-34, 2);
-  ctx.lineTo(-6, 7); ctx.bezierCurveTo(10, 10, 24, 8, 26, 0); ctx.closePath(); ctx.fill();
-  const glass = ctx.createLinearGradient(4, -10, 12, -2);
-  glass.addColorStop(0, "#ffffff"); glass.addColorStop(1, "#3b0f1a");
-  ctx.fillStyle = glass; ctx.beginPath(); ctx.ellipse(9, -6, 7, 3.5, -0.15, 0, 6.28); ctx.fill();
-  const wing = ctx.createLinearGradient(0, 0, 0, 22);
-  wing.addColorStop(0, "#ff6a3a"); wing.addColorStop(1, "#8a0e0e");
-  ctx.fillStyle = wing;
-  ctx.beginPath(); ctx.moveTo(6, 2); ctx.lineTo(-14, 24); ctx.lineTo(-4, 24); ctx.lineTo(14, 3); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = "#2a0a0a"; ctx.beginPath(); ctx.arc(26, 0, 3.2, 0, 6.28); ctx.fill();
-  const spin = Math.abs(Math.sin(now / 18));
-  ctx.fillStyle = "rgba(255,230,210,0.55)";
-  ctx.beginPath(); ctx.ellipse(28, 0, 1.6, 4 + 12 * spin, 0, 0, 6.28); ctx.fill();
-  ctx.restore();
-}
-
-function drawCurve(ctx, pts, ox, oy) {
-  if (pts.length < 2) return;
-  const last = pts[pts.length - 1];
-  const fill = ctx.createLinearGradient(0, last[1], 0, oy);
-  fill.addColorStop(0, "rgba(255,60,30,0.45)"); fill.addColorStop(1, "rgba(255,42,42,0.02)");
-  ctx.beginPath(); ctx.moveTo(ox, oy);
-  pts.forEach(([x, y]) => ctx.lineTo(x, y));
-  ctx.lineTo(last[0], oy); ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
-  ctx.save(); ctx.shadowColor = "#ff4a1f"; ctx.shadowBlur = 22; ctx.lineWidth = 4; ctx.lineCap = "round";
-  const st = ctx.createLinearGradient(ox, 0, last[0], 0);
-  st.addColorStop(0, "#ff2a2a"); st.addColorStop(1, "#ffb347");
-  ctx.strokeStyle = st; ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
-  ctx.restore();
-}
-
-function drawParticles(ctx, parts, dt) {
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const p = parts[i];
-    p.life -= dt; if (p.life <= 0) { parts.splice(i, 1); continue; }
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g || 0) * dt;
-    const a = p.life / p.max;
-    ctx.globalAlpha = a; ctx.fillStyle = p.c;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.4 + a), 0, 6.28); ctx.fill();
-  }
-  ctx.globalAlpha = 1;
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x0e0406, roughness: 0.9, metalness: 0.1, flatShading: true }));
+  m.receiveShadow = true;
+  return m;
 }
 
 export const AviatorCanvas = forwardRef(function AviatorCanvas({ onTick, onCrash }, ref) {
-  const cvs = useRef(null);
-  const st = useRef({ mode: "idle", k: 0.12, crash: 1, t0: 0, scroll: 0, parts: [], crashT: 0, endT: 0, ring: 0 });
+  const mount = useRef(null);
+  const st = useRef({ mode: "idle", k: 0.12, crash: 1, t0: 0, crashT: 0 });
   const cb = useRef({ onTick, onCrash });
+  const api3 = useRef({});
   cb.current = { onTick, onCrash };
 
   useImperativeHandle(ref, () => ({
-    fly(k, crash) { Object.assign(st.current, { mode: "fly", k, crash, t0: performance.now(), parts: [], ring: 0 }); },
-    reset() { Object.assign(st.current, { mode: "idle", parts: [], ring: 0 }); },
+    fly(k, crash) { Object.assign(st.current, { mode: "fly", k, crash, t0: performance.now() }); api3.current.onFly?.(); },
+    reset() { Object.assign(st.current, { mode: "idle" }); api3.current.onReset?.(); },
   }));
 
   useEffect(() => {
-    const c = cvs.current, ctx = c.getContext("2d");
-    let raf, last = performance.now(), w = 0, h = 0;
-    const fit = () => {
-      const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
-      w = r.width; h = r.height; c.width = w * d; c.height = h * d; ctx.setTransform(d, 0, 0, d, 0, 0);
+    const S = createStage(mount.current, { fov: 42, exposure: 1.05, envIntensity: 0.6 });
+    const { scene, camera } = S;
+    scene.fog = new THREE.Fog(0x12030a, 25, 85);
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(150, 24, 12), new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false }));
+    scene.add(sky);
+    const { sun, rim } = addStudioLights(scene, { keyI: 1.6, key: 0xffd2a8, fill: 0xff5a2a, fillI: 60, ambient: 0.3, shadowSize: 14, keyPos: [10, 18, 8] });
+    const moon = new THREE.Mesh(new THREE.SphereGeometry(4, 32, 16), new THREE.MeshBasicMaterial({ color: 0xffb070, fog: false }));
+    moon.position.set(40, 14, -110); scene.add(moon);
+    // stars
+    const sg = new THREE.BufferGeometry(); const sp = [];
+    for (let i = 0; i < 700; i++) sp.push(rand(-140, 140), rand(10, 120), rand(-140, -60));
+    sg.setAttribute("position", new THREE.Float32BufferAttribute(sp, 3));
+    const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true, opacity: 0.8, fog: false }));
+    scene.add(stars);
+    const chunks = [0, 1, 2].map((i) => { const c = terrainChunk(); c.position.set(i * 60 - 30, -3, -14); scene.add(c); return c; });
+    const runway = new THREE.Mesh(new THREE.BoxGeometry(14, 0.1, 3), new THREE.MeshStandardMaterial({ color: 0x202024, roughness: 0.7 }));
+    runway.position.set(0, -0.62, 0); runway.receiveShadow = true; scene.add(runway);
+    const lights = [];
+    for (let i = 0; i < 12; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xff2a2a : 0xffe08a })); l.position.set(-6 + i * 1.1, -0.52, 1.45); scene.add(l); lights.push(l); }
+    const { p: plane, prop, wheels } = buildPlane();
+    scene.add(plane);
+    // preallocated ribbon trail (no per-frame geometry allocation)
+    const MAXP = 320;
+    const rPos = new Float32Array(MAXP * 2 * 3);
+    const rGeo = new THREE.BufferGeometry();
+    rGeo.setAttribute("position", new THREE.BufferAttribute(rPos, 3));
+    const idx = [];
+    for (let i = 0; i < MAXP - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+    rGeo.setIndex(idx);
+    rGeo.setDrawRange(0, 0);
+    const trail = new THREE.Mesh(rGeo, new THREE.MeshBasicMaterial({ color: 0xff3348, side: THREE.DoubleSide, toneMapped: false }));
+    trail.frustumCulled = false;
+    scene.add(trail);
+    let np = 0;
+    const pushTrail = (x, y) => {
+      if (np >= MAXP) { rPos.copyWithin(0, 6); np = MAXP - 1; }
+      const o = np * 6;
+      rPos[o] = x; rPos[o + 1] = y + 0.08; rPos[o + 2] = 0;
+      rPos[o + 3] = x; rPos[o + 4] = y - 0.08; rPos[o + 5] = 0;
+      np++;
+      rGeo.setDrawRange(0, Math.max(0, (np - 1) * 6));
+      rGeo.attributes.position.needsUpdate = true;
     };
-    fit();
-    const ro = new ResizeObserver(fit); ro.observe(c);
-    const loop = (now) => {
-      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const clearTrail = () => { np = 0; rGeo.setDrawRange(0, 0); };
+    const exhaust = createParticles(scene, { count: 500, size: 0.35, color: 0xff7a2a });
+    const boom = createParticles(scene, { count: 400, size: 0.5, color: 0xffcc55 });
+    const flash = new THREE.PointLight(0xffaa44, 0, 30, 2); scene.add(flash);
+    let engine = null;
+    let fall = { vy: 0, spin: 0 };
+    let camX = 0; let camY = 1.5; let frame = 0;
+
+    api3.current.onFly = () => { clearTrail(); fall = { vy: 0, spin: 0 }; plane.visible = true; sfx.takeoff(); engine?.stop(); engine = hum(80); };
+    api3.current.onReset = () => { clearTrail(); plane.visible = true; plane.rotation.set(0, 0, 0); engine?.stop(); engine = null; };
+
+    S.start((dt, now) => {
       const s = st.current;
-      let t = 0, m = 1;
+      let t = 0; let m = 1;
+      frame++;
       if (s.mode === "fly") {
         t = (now - s.t0) / 1000; m = Math.exp(s.k * t);
         if (m >= s.crash) {
-          m = s.crash; t = Math.log(Math.max(1, s.crash)) / s.k;
-          s.mode = "crash"; s.endT = t; s.ring = 0.01;
+          m = s.crash; s.mode = "crash"; s.crashT = Math.log(Math.max(1, s.crash)) / s.k;
           cb.current.onCrash?.(s.crash);
-        } else cb.current.onTick?.(m);
-        s.scroll += dt * (1 + t * 0.15);
-      } else if (s.mode === "crash") { t = s.endT; m = s.crash; }
-      else s.scroll += dt * 0.15;
-
-      drawBackground(ctx, w, h, s.scroll, now);
-      const ox = 34, oy = h - 34;
-      const tMax = Math.max(8, t * 1.18), mMax = Math.max(2, m * 1.25);
-      const X = (tt) => ox + (tt / tMax) * (w - ox - 70);
-      const Y = (mm) => oy - ((mm - 1) / (mMax - 1)) * (oy - 70);
-      ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = "10px JetBrains Mono, monospace";
-      for (let i = 0; i <= 3; i++) { const mm = 1 + ((mMax - 1) * i) / 3; ctx.fillText(mm.toFixed(1) + "x", 2, Y(mm) + 3); }
-      const pts = [];
-      if (s.mode !== "idle") for (let i = 0; i <= 60; i++) { const tt = (t * i) / 60; pts.push([X(tt), Y(Math.exp(s.k * tt))]); }
-      drawCurve(ctx, pts, ox, oy);
-      const [px, py] = pts.length ? pts[pts.length - 1] : [ox + 10, oy - 6 + Math.sin(now / 400) * 4];
-      if (s.mode === "fly") {
-        const p2 = pts[Math.max(0, pts.length - 4)];
-        const ang = Math.max(-0.9, Math.atan2(py - p2[1], px - p2[0] || 1));
-        s.parts.push({ x: px - 30, y: py + 4, vx: rand(-90, -40), vy: rand(-12, 12), r: rand(2, 4), life: 0.6, max: 0.6, c: Math.random() > 0.5 ? "#ff7a2a" : "#ff2a2a" });
-        drawParticles(ctx, s.parts, dt);
-        drawPlane(ctx, px, py + Math.sin(now / 160) * 1.5, ang, now, 1.15);
-      } else if (s.mode === "crash") {
-        if (s.ring > 0 && s.ring < 1.2) {
-          if (s.ring === 0.01) for (let i = 0; i < 70; i++) {
-            const a = rand(0, 6.28), v = rand(60, 320);
-            s.parts.push({ x: px, y: py, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 260, r: rand(2, 5), life: rand(0.6, 1.4), max: 1.4, c: ["#ffdd55", "#ff7a2a", "#ff2a2a", "#ffffff"][i % 4] });
+          sfx.explode(); engine?.stop(); engine = null;
+          for (let i = 0; i < 260; i++) {
+            const a = rand(0, Math.PI * 2); const b = rand(-1, 1); const v = rand(2, 11);
+            boom.emit({ x: plane.position.x, y: plane.position.y, z: plane.position.z, vx: Math.cos(a) * v * Math.sqrt(1 - b * b), vy: b * v + 2, vz: Math.sin(a) * v * Math.sqrt(1 - b * b), g: 6, drag: 1.2, life: rand(0.6, 1.8), color: [0xffdd55, 0xff7a2a, 0xff2a2a, 0xffffff][i % 4] });
           }
-          s.ring += dt;
-          ctx.save(); ctx.globalAlpha = Math.max(0, 1 - s.ring); ctx.strokeStyle = "#ffb347"; ctx.lineWidth = 3;
-          ctx.shadowColor = "#ff4a1f"; ctx.shadowBlur = 24;
-          ctx.beginPath(); ctx.arc(px, py, s.ring * 140, 0, 6.28); ctx.stroke(); ctx.restore();
-        }
-        drawParticles(ctx, s.parts, dt);
-      } else drawPlane(ctx, px, py, -0.1, now, 1.15);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+          flash.position.copy(plane.position); flash.intensity = 400;
+          fall = { vy: 2, spin: rand(4, 8) };
+        } else cb.current.onTick?.(m);
+        engine?.set(80 + Math.min(260, m * 18), 0.035);
+      }
+      if (s.mode === "fly") {
+        const x = t * SPEED; const y = altOf(m);
+        const prev = plane.position.clone();
+        plane.position.set(x, y + Math.sin(now / 180) * 0.05, 0);
+        const d = plane.position.clone().sub(prev);
+        plane.rotation.z = damp(plane.rotation.z, Math.atan2(d.y, Math.max(0.0001, d.x)) * 0.9, 6, dt);
+        plane.rotation.x = Math.sin(now / 600) * 0.12;
+        if (frame % 2 === 0) pushTrail(x - 1.4, y);
+        for (let i = 0; i < 2; i++) exhaust.emit({ x: x - 1.6, y: y + rand(-0.1, 0.1), z: rand(-0.15, 0.15), vx: rand(-4, -2), vy: rand(-0.4, 0.4), vz: rand(-0.4, 0.4), life: rand(0.3, 0.7), color: Math.random() > 0.5 ? 0xff7a2a : 0xff2a2a, drag: 2 });
+        wheels.forEach((w) => { w.visible = y < 1.5; });
+      } else if (s.mode === "crash") {
+        fall.vy -= 14 * dt;
+        plane.position.y += fall.vy * dt; plane.position.x += 2 * dt;
+        plane.rotation.z -= fall.spin * dt; plane.rotation.x += fall.spin * 0.6 * dt;
+        if (plane.position.y < -8) plane.visible = false;
+        if (Math.random() < 0.6) exhaust.emit({ x: plane.position.x, y: plane.position.y, z: 0, vx: rand(-1, 1), vy: rand(0.5, 2), vz: rand(-1, 1), life: 1.2, color: 0x444444, drag: 1 });
+      } else {
+        plane.position.set(-2, -0.05 + Math.sin(now / 400) * 0.02, 0);
+        plane.rotation.set(0, 0, 0.02);
+        wheels.forEach((w) => { w.visible = true; });
+      }
+      prop.rotation.x += dt * (s.mode === "crash" ? 4 : 45);
+      flash.intensity = Math.max(0, flash.intensity - dt * 600);
+      exhaust.update(dt); boom.update(dt);
+      const px = plane.position.x; const py = Math.max(0, s.mode === "crash" ? altOf(s.crash) : plane.position.y);
+      camX = damp(camX, px - 3, 3, dt); camY = damp(camY, py + 1.6, 3, dt);
+      camera.position.set(camX - 2, camY + 1.2, 12.5 + Math.min(10, py * 0.35));
+      camera.lookAt(camX + 2.5, camY - 0.3, 0);
+      sky.position.set(camX, 0, 0); stars.position.x = camX * 0.9; moon.position.x = camX + 40;
+      sun.position.set(camX + 10, camY + 18, 8); sun.target.position.set(camX, camY, 0);
+      rim.position.set(camX - 6, camY + 3, 4);
+      const base = Math.floor((camX + 30) / 60);
+      chunks.forEach((c, i) => { c.position.x = (base + i - 1) * 60; });
+      lights.forEach((l, i) => { l.material.color.setHex(Math.floor(now / 300 + i) % 2 ? 0xff2a2a : 0xffe08a); });
+    });
+    return () => { engine?.stop(); S.dispose(); };
   }, []);
 
-  return <canvas ref={cvs} className="absolute inset-0 h-full w-full" data-testid="aviator-canvas" />;
+  return <div ref={mount} className="absolute inset-0 h-full w-full" data-testid="aviator-canvas" />;
 });

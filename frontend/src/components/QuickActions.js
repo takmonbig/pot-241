@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Users, Swords, Gift, Loader2, Copy, Share2, Check } from "lucide-react";
 import api, { formatApiError } from "@/lib/api";
@@ -16,7 +16,8 @@ export function QuickActions() {
     window.addEventListener("game:active", h);
     return () => window.removeEventListener("game:active", h);
   }, []);
-  if (gameActive) return null;
+  const { pathname } = useLocation();
+  if (gameActive || pathname.startsWith("/games/")) return null;
   return (
     <>
       <div className="fixed bottom-[70px] inset-x-0 z-40 pointer-events-none" data-testid="quick-actions">
