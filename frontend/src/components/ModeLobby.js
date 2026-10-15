@@ -40,7 +40,7 @@ function RaceCard({ r, i, onJoin, nav }) {
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-xs text-white/50 mb-3">
           <div><div className="font-mono-pz text-base text-white flex items-center justify-center gap-1"><Coins className="h-3.5 w-3.5" />{r.entry_fee}</div>entry</div>
-          <div><div className="font-mono-pz text-base text-green-400">{r.prize}</div>{r.is_1v1 ? "winner gets" : "pool"}</div>
+          <div><div className="font-mono-pz text-base text-green-400">{r.is_1v1 || r.prize > 0 ? r.prize : Math.round(r.entry_fee * r.max_players * 0.9)}</div>{r.is_1v1 ? "winner gets" : r.prize > 0 ? "pool" : "pool up to"}</div>
           <div><div className="font-mono-pz text-base text-white">{r.current_players}/{r.max_players}</div>players</div>
         </div>
         {r.status === "COMPLETED" ? (

@@ -66,6 +66,7 @@ export const AviatorCanvas = forwardRef(function AviatorCanvas({ onTick, onCrash
   useImperativeHandle(ref, () => ({
     fly(k, crash) { Object.assign(st.current, { mode: "fly", k, crash, t0: performance.now() }); api3.current.onFly?.(); },
     reset() { Object.assign(st.current, { mode: "idle" }); api3.current.onReset?.(); },
+    setCrash(cp) { if (st.current.mode === "fly") st.current.crash = cp; },
   }));
 
   useEffect(() => {

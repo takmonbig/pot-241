@@ -190,28 +190,28 @@ export default function VortexSpin() {
               {spinning ? "Spinning…" : game.stage === 0 ? "SPIN" : `SPIN STAGE ${game.stage + 1} · ${nextStage ? Math.round(nextStage.survival * 100) : 0}% safe`}
             </button>
             {game.stage > 0 && (
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => collect(true)} disabled={busy || spinning || partialStage === game.stage} data-testid="vortex-partial-btn"
+              <div className={`grid gap-2 ${race.id ? "grid-cols-1" : "grid-cols-2"}`}>
+                {!race.id && <button onClick={() => collect(true)} disabled={busy || spinning || partialStage === game.stage} data-testid="vortex-partial-btn"
                   className="py-3 rounded-2xl bg-white/10 hover:bg-white/15 font-bold flex items-center justify-center gap-2 disabled:opacity-40">
                   <Split className="h-4 w-4" /> Take {pct}% · <span className="font-mono-pz">{(game.at_risk * pct / 100).toFixed(2)}</span>
-                </button>
+                </button>}
                 <button onClick={() => collect(false)} disabled={busy || spinning} data-testid="vortex-collect-btn"
                   className="py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 font-extrabold flex items-center justify-center gap-2 disabled:opacity-50">
-                  <HandCoins className="h-4 w-4" /> Collect <span className="font-mono-pz">{game.at_risk?.toFixed(2)}</span>
+                  <HandCoins className="h-4 w-4" /> Collect <span className="font-mono-pz">{race.id ? `${curMult}×` : game.at_risk?.toFixed(2)}</span>
                 </button>
               </div>
             )}
           </>
         ) : (
           <>
-            <BetBox bet={bet} setBet={setBet} min={cfg?.min_bet || 20} prefix="vortex" disabled={busy} />
-            <div className="flex justify-between text-sm text-white/50">
+            {!race.id && <BetBox bet={bet} setBet={setBet} min={cfg?.min_bet || 20} prefix="vortex" disabled={busy} />}
+            <div className={`flex justify-between text-sm text-white/50 ${race.id ? "hidden" : ""}`}>
               <span>Max win (all {stages.length} stages)</span>
               <span className="font-mono-pz text-green-400 font-bold" data-testid="vortex-top-prize">{(bet * (stages[stages.length - 1]?.multiplier || 0)).toFixed(2)}</span>
             </div>
-            <button onClick={startAndSpin} disabled={busy || spinning} data-testid="vortex-start-btn"
+            <button onClick={startAndSpin} disabled={busy || spinning || (race.id && race.locked)} data-testid="vortex-start-btn"
               className="w-full py-4 rounded-2xl bg-pazer-red hover:bg-pazer-redhover font-extrabold text-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-              {(busy || spinning) && <Loader2 className="h-5 w-5 animate-spin" />} {game ? "Spin Again" : "Start & Spin"} · {bet}
+              {(busy || spinning) && <Loader2 className="h-5 w-5 animate-spin" />} {race.id ? (race.locked ? "Race run used" : "Start race run") : `${game ? "Spin Again" : "Start & Spin"} · ${bet}`}
             </button>
           </>
         )}

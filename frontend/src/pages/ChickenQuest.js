@@ -162,7 +162,7 @@ export default function ChickenQuest() {
           <>
             {game && (
               <div data-testid="chicken-result" className={`text-center font-display font-extrabold text-lg ${game.status === "won" ? "text-emerald-300" : "text-pazer-red"}`}>
-                {game.status === "won" ? `Collected at lane ${step}${hazardAt ? ` · trap was on lane ${hazardAt}` : " · path was clear!"}` : `Fried on lane ${hazardAt}`}
+                {game.status === "won" ? `Collected at lane ${step}${race.id ? " · race score submitted" : hazardAt ? ` · trap was on lane ${hazardAt}` : " · path was clear!"}` : `Fried on lane ${hazardAt}`}
               </div>
             )}
             {!race.id && <>

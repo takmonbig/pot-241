@@ -1116,6 +1116,17 @@ async def aviator_cashout(body: AviatorCashoutReq, user: dict = Depends(get_curr
             "game": game_record, "wallet": await get_wallet(user)}
 
 
+@api.post("/games/aviator/status")
+async def aviator_status(body: AviatorCashoutReq, user: dict = Depends(get_current_user)):
+    session = await db.game_sessions.find_one({"id": body.session_id, "mode": "aviator"})
+    if not session or session["user_id"] != str(user["_id"]) or session["nonce"] != body.nonce:
+        raise HTTPException(status_code=404, detail="Session not found")
+    import math
+    elapsed = datetime.now(timezone.utc).timestamp() - session["server_start"]
+    crashed = session["status"] != "active" or math.exp(session.get("growth_rate", 0.12) * elapsed) >= session["crash_point"]
+    return {"crashed": crashed, "crash_point": session["crash_point"] if crashed else None}
+
+
 @api.post("/games/tower/start")
 async def tower_start(body: TowerStartReq, user: dict = Depends(get_current_user)):
     cfg = await get_config()
@@ -1224,7 +1235,7 @@ async def tower_pick(body: TowerPickReq, user: dict = Depends(get_current_user))
     if is_bomb:
         prize, _ = await _settle_tower(session, user, won=False, cashed_row=row)
         return {"safe": False, "lost": True, "row": row, "col": body.col,
-                "bombs_layout": session["bombs_layout"], "prize": 0.0,
+                "bombs_layout": None if session.get("race_id") else session["bombs_layout"], "prize": 0.0,
                 "wallet": await get_wallet(user)}
     new_row = row + 1
     await db.game_sessions.update_one({"id": session["id"]}, {"$set": {"current_row": new_row}})
@@ -1233,7 +1244,7 @@ async def tower_pick(body: TowerPickReq, user: dict = Depends(get_current_user))
     if finished:
         prize, m = await _settle_tower(session, user, won=True, cashed_row=new_row)
         return {"safe": True, "finished": True, "row": new_row, "col": body.col,
-                "multiplier": m, "prize": prize, "bombs_layout": session["bombs_layout"],
+                "multiplier": m, "prize": prize, "bombs_layout": None if session.get("race_id") else session["bombs_layout"],
                 "wallet": await get_wallet(user)}
     return {"safe": True, "finished": False, "row": new_row, "col": body.col,
             "multiplier": round(mult, 2), "next_multiplier": session["multipliers"][new_row],
@@ -1256,7 +1267,7 @@ async def tower_cashout(body: TowerCashoutReq, user: dict = Depends(get_current_
         raise HTTPException(status_code=400, detail="Clear at least one row before cashing out")
     prize, m = await _settle_tower(session, user, won=True, cashed_row=row)
     return {"won": True, "cashed_row": row, "multiplier": m, "prize": prize,
-            "bombs_layout": session["bombs_layout"], "wallet": await get_wallet(user)}
+            "bombs_layout": None if session.get("race_id") else session["bombs_layout"], "wallet": await get_wallet(user)}
 
 
 @api.get("/games/history")

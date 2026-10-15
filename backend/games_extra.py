@@ -905,7 +905,7 @@ async def stack_room_tick():
                                           meta={"mode": "stack_mp", "room_id": room["id"]})
     for room in await S.db.stack_rooms.find({"status": "LIVE"}).to_list(100):
         await _maybe_settle(room["id"])
-    if sc.get("mp_enabled", True):
+    if sc.get("mp_enabled", False):
         await _ensure_open_rooms(sc)
 
 
@@ -921,7 +921,7 @@ async def stack_room_loop():
 @router.get("/games/stack/rooms")
 async def stack_rooms(user: dict = Depends(S.get_current_user)):
     cfg, sc = await _stack_config()
-    if sc.get("mp_enabled", True):
+    if sc.get("mp_enabled", False):
         await _ensure_open_rooms(sc)
     uid = str(user["_id"])
     open_rooms = await S.db.stack_rooms.find({"status": "OPEN"}, {"_id": 0}).sort(
@@ -931,14 +931,14 @@ async def stack_rooms(user: dict = Depends(S.get_current_user)):
     recent = await S.db.stack_rooms.find({"players.user_id": uid, "status": "COMPLETED"},
                                          {"_id": 0}).sort("completed_at", -1).to_list(5)
     return {"open": [_annotate(r, uid) for r in open_rooms], "mine": [_annotate(r, uid) for r in mine],
-            "recent": [_annotate(r, uid) for r in recent], "enabled": sc.get("mp_enabled", True),
+            "recent": [_annotate(r, uid) for r in recent], "enabled": sc.get("mp_enabled", False),
             "platform_fee_percent": sc.get("mp_platform_fee_percent", 10)}
 
 
 @router.post("/games/stack/rooms/{room_id}/join")
 async def stack_room_join(room_id: str, user: dict = Depends(S.get_current_user)):
     cfg, sc = await _stack_config()
-    if not cfg["game_enabled"] or not sc.get("mp_enabled", True):
+    if not cfg["game_enabled"] or not sc.get("mp_enabled", False):
         raise HTTPException(status_code=403, detail="Tower Stack multiplayer is disabled")
     room = await S.db.stack_rooms.find_one({"id": room_id})
     if not room or room["status"] != "OPEN":

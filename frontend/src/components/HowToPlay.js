@@ -22,8 +22,8 @@ export function HowToPlay({ k, auto = true }) {
   return (
     <>
       <button onClick={() => setOpen(true)} data-testid={`howto-open-${k}`} aria-label="How to play"
-        className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors">
-        <CircleHelp className="h-4 w-4" /> How to play
+        className="ml-auto shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 transition-colors">
+        <CircleHelp className="h-4 w-4" /> <span className="hidden sm:inline">How to play</span><span className="sm:hidden">Help</span>
       </button>
       <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
         <DialogContent className="bg-pazer-card border-white/10 text-white p-0 overflow-hidden max-w-sm" data-testid={`howto-dialog-${k}`}>

@@ -1,0 +1,48 @@
+{
+  "summary": "Iteration 13: tested Race Mode end to end (backend + UI) plus the how-to-play demo videos, hub loop videos, Chicken nest egg, Play-with-Friends modal, admin header alignment and profile earned decimals. New pytest suite test_race_mode.py: 16/16 pass. It covers public room listing and prize math for 5 games x 2 kinds, join debit, double/full/insufficient join, public 1v1 going LIVE on fill, bot fill after ~30s, friends custom (RF code, 1v1 min 50 / prize 2x, group min 30 / max 10 / no fee), host-only start and the 2+ player rule, play-once, no debit on play, no direct credit on settle, shared outcomes (aviator crash, tower bombs, chicken hazard, vortex landings, stack phases), the tie going to the earlier finisher, REFUNDED when all scores are 0, partial collect returning 400 in races, solo chicken/aviator/tower/vortex not abandoning race sessions, chicken default mode 'medium', and stack mp_enabled False. The 180s window expiry finalized with 'Did not play' and refunded correctly. UI checks passed: hub videos (webm, loop, poster, readyState 4); how-to dialogs auto-open once for all 6 games plus 1v1/rooms, with 3 steps, a video, close, a localStorage flag and a manual reopen; the fair panel is gone for chicken/vortex; the chicken lane grid has no horizontal scroll; the nest badge is below the header at 390px; the nest egg reveal shows +prize and auto-closes; ModeLobby tabs (stopwatch room-cards, race-cards for the others); join -> confirm -> /race/id; bot fill -> LIVE -> play -> aviator race-bar/'Start race run' -> COMPLETED and +90 credited; the friends modal (friends-demo, custom-game-chicken, target hidden) -> create -> host start -> chicken race -> 'Race run used' -> waiting -> completed +100; join-by-code RF -> /race/id (no start button for non-host); admin header and body both at 320-1600px; profile earned shows 2 decimals. Main UI defect: the Vortex page is not race-aware (details below).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/race/{id}/join", "issue": "The participant is $pushed BEFORE debit_wallet. If the debit fails (concurrent spend between the balance check and the debit), the user stays in the room without paying. Debit first (or roll back the push on failure)."},
+      {"endpoint": "POST /api/race/{id}/play (aviator)", "issue": "The race session response includes crash_point (same as the solo shape). In a PvP race this lets any client read the shared crash point from the network response and cash out just below it, so it can win every aviator race. Do not send crash_point to the client in races (stream/settle server-side)."},
+      {"endpoint": "tower pick / chicken step (race)", "issue": "On a loss, the responses reveal bombs_layout / hazard_step while the race is still LIVE. In a friends room the first player can leak the layout to the others (collusion). Consider hiding these until the race COMPLETES."},
+      {"endpoint": "get_current_user", "issue": "The access_token cookie takes precedence over the Authorization header. A stale cookie from another account silently overrides the Bearer token (seen during testing). This is pre-existing, so FYI only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "VortexSpin race mode", "issue": "With ?race=<id> the BetBox is still shown, the start button says 'Start & Spin · 20' instead of 'Start race run', and it is never disabled after the run ('Race run used' missing; Tower/Chicken/Aviator/Stack do this correctly).", "selector": "[data-testid='vortex-start-btn']", "priority": "HIGH"},
+      {"component": "VortexSpin race mode", "issue": "The partial collect button ('Take 50%') is shown in races. pct falls back to cfg 50 because the race session's partial_collect_percent=0 is ignored, and clicking it shows the error popup 'Partial collect is off in races'. Hide vortex-partial-btn when race.id is set.", "selector": "[data-testid='vortex-partial-btn']", "priority": "MEDIUM"},
+      {"component": "ChickenQuest race result", "issue": "After collecting in a race the result line says 'Collected at lane 1 · path was clear!', because the backend hides hazard_step (null) in races and the UI treats null as 'no trap'. This is misleading; show a neutral 'race score submitted' message instead.", "selector": "[data-testid='chicken-result']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Play with Friends modal (390px)", "issues": ["The friends-demo strip (h-28) clips the 3rd step text ('Winner takes it all, with no platform fee' is cut off)."]},
+      {"screen": "Vortex/Tower game header (390px)", "issues": ["The 'Vortex Spin' title wraps to 2 lines and the 'How to play' pill wraps its label onto 2 lines; the header is cramped."]},
+      {"screen": "/multiplayer race cards", "issues": ["Empty rooms show '0 pool'. Consider showing the per-player potential or 'entry x players'."]},
+      {"screen": "/race/:id", "issues": ["Rooms-kind races also say 'Winner takes'; fine but could say 'Prize pool' for rooms."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_race_mode.py", "/app/backend/tests/race_seed_helper.py", "/app/test_reports/pytest/race_results.xml"],
+  "action_items": [
+    "VortexSpin.js: when race.id is set, hide the BetBox, label the start button 'Start race run' / 'Race run used', disable it when race.locked, and hide vortex-partial-btn (or use the session partial_collect_percent=0).",
+    "ChickenQuest.js line ~165: in a race, don't print 'path was clear!' when hazard_step is null.",
+    "race.py race_join: debit before pushing the participant (or roll back on a debit failure).",
+    "Security: don't expose crash_point in the aviator race session; consider hiding the tower bombs_layout / chicken hazard_step until the race completes.",
+    "Fix the friends-demo strip height so all 3 steps are visible at 390px.",
+    "Update obsolete legacy tests: test_iter11_fixes (chicken 'easy' default, stack versus with mp disabled), test_aviator_tower (DB_NAME default 'test_database'; the early-crash branch asserts won False even when 1.2 < crash)."
+  ],
+  "critical_code_review_comments": [
+    "race.py: _maybe_finalize relies on a process-local asyncio.Lock. That is fine for a single uvicorn worker but not multi-worker safe; the conditional status update already guards double credit, though.",
+    "race.py: race sessions abandoned mid-run stay status 'active' in game_sessions forever (filtered by race_id so harmless, but they accumulate).",
+    "games_extra.py lines 908/924 use sc.get('mp_enabled', True); the fallback default contradicts EXTRA_DEFAULTS False.",
+    "The stack race label grammar shows '1 blocks'."
+  ],
+  "updated_files": ["/app/backend/tests/test_race_mode.py", "/app/backend/tests/race_seed_helper.py"],
+  "success_rate": {"backend": "100% (16/16 race tests; legacy failures are obsolete tests only)", "frontend": "~88% (Vortex race UI not race-aware; all other flows pass)"},
+  "seed_data_creation": "Set main_balance=20000 for 8800112233 and 8800112244. Created several friends race rooms (RF...), some left REFUNDED/OPEN; they expire automatically.",
+  "test_credentials": "Player1 8800112233/Test@123, Player2 8800112244/Test@123, Admin 9999999999/Admin@123 (/admin/login). Login returns 'token' and also sets an access_token cookie that overrides the Bearer header.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend/tests && pytest test_race_mode.py -n 0 (about 60s, includes a 30s bot-fill wait). race_seed_helper.py <games...> creates LIVE friends races for UI testing. In browser tests set localStorage timeup_guide_done=1 (the onboarding guide blocks clicks on /home) and tu_demo_seen_<k>=1. Use a separate browser context for the second player, because a page.request login sets cookies that override localStorage tokens. Retest the Vortex race UI after the fix."
+}

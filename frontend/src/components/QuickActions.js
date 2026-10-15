@@ -93,10 +93,10 @@ function CustomRoomModal({ open, onClose }) {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="bg-pazer-card border-white/10 text-white max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle className="font-display flex items-center gap-2"><Users className="h-5 w-5 text-pazer-red" />Play with Friends</DialogTitle></DialogHeader>
-        <div className="relative h-28 overflow-hidden rounded-2xl" data-testid="friends-demo">
+        <div className="relative min-h-[8.5rem] overflow-hidden rounded-2xl" data-testid="friends-demo">
           <LoopVideo k={"friends"} className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
-          <ol className="relative p-3 space-y-1 text-[11px] text-white/85 max-w-[70%]">
+          <ol className="relative p-3 space-y-1 text-[11px] leading-snug text-white/85 max-w-[75%]">
             {MODE_META.friends.steps.map((t, i) => <li key={i}><b className="text-pazer-red">{i + 1}.</b> {t}</li>)}
           </ol>
         </div>

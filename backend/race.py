@@ -141,8 +141,9 @@ def stack_score(r: dict, ch: dict):
     reached = r.get("reached_at_ms")
     if reached is not None and reached <= ch["seconds"] * 1000:
         return round(r["height"] + (ch["seconds"] * 1000 - reached) / (ch["seconds"] * 1000), 4), \
-            f"{r['height']} blocks · {reached / 1000:.1f}s"
-    return float(r.get("height", 0)), f"{r.get('height', 0)} blocks"
+            f"{r['height']} block{'s' if r['height'] != 1 else ''} · {reached / 1000:.1f}s"
+    h = r.get("height", 0)
+    return float(h), f"{h} block{'s' if h != 1 else ''}"
 
 
 async def _bot_score(room, cfg):
@@ -188,7 +189,7 @@ async def _make_session(room: dict, user: dict) -> dict:
         ac = cfg["aviator_config"]
         s = {**base, "crash_point": _crash(room, ac), "growth_rate": ac.get("growth_rate", 0.12),
              "nonce": secrets.token_urlsafe(16), "force_win": False, "server_start": _now().timestamp()}
-        out = {"session_id": s["id"], "nonce": s["nonce"], "entry_fee": fee, "crash_point": s["crash_point"],
+        out = {"session_id": s["id"], "nonce": s["nonce"], "entry_fee": fee, "crash_point": None,
                "growth_rate": s["growth_rate"], "max_multiplier": ac.get("max_multiplier", 100)}
     elif g == "tower":
         d, rows, layout, mults = _tower_layout(room, cfg["tower_config"])
@@ -397,13 +398,15 @@ async def race_join(room_id: str, user: dict = Depends(S.get_current_user)):
     if len(room["participants"]) >= room["max_players"]:
         raise HTTPException(status_code=409, detail="Room is full")
     u = await G._load_user_with_balance(user, room["entry_fee"])
+    await S.debit_wallet(u, room["entry_fee"], "game_entry", meta={"mode": f"race_{room['game']}", "race_id": room_id})
     res = await S.db.race_rooms.update_one(
         {"id": room_id, "status": "OPEN", "participants.user_id": {"$ne": uid},
          f"participants.{room['max_players'] - 1}": {"$exists": False}},
         {"$push": {"participants": {"user_id": uid, "username": u["username"], "joined_at": S.now_iso()}}})
     if res.modified_count != 1:
+        await S.credit_wallet(uid, room["entry_fee"], "refund", "main", status="refunded",
+                              meta={"reason": "race_join_failed", "race_id": room_id})
         raise HTTPException(status_code=409, detail="Room just filled up, try another")
-    await S.debit_wallet(u, room["entry_fee"], "game_entry", meta={"mode": f"race_{room['game']}", "race_id": room_id})
     await S.db.users.update_one({"_id": u["_id"]}, {"$inc": {"stats.total_entries": room["entry_fee"]}})
     room = await _get(room_id)
     if room["kind"] != "friends" and len(room["participants"]) >= room["max_players"]:

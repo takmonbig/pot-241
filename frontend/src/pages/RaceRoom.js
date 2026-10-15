@@ -82,7 +82,7 @@ export default function RaceRoom() {
         <div className="relative h-full p-4 flex flex-col justify-between">
           <span className="self-start rounded-full bg-pazer-red px-3 py-1 text-[11px] font-extrabold uppercase" data-testid="race-kind">{KIND_LABEL[r.kind]}</span>
           <div>
-            <div className="text-xs uppercase tracking-widest text-white/60">Winner takes</div>
+            <div className="text-xs uppercase tracking-widest text-white/60">{r.is_1v1 ? "Winner takes" : "Prize pool"}</div>
             <div className="font-mono-pz text-4xl font-extrabold text-green-400" data-testid="race-prize">{r.prize}</div>
             <div className="text-xs text-white/70">Entry {r.entry_fee} · <Users className="inline h-3 w-3" /> {r.current_players}/{r.max_players}</div>
           </div>

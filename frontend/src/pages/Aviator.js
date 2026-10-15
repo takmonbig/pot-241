@@ -80,7 +80,8 @@ export default function Aviator() {
       const { data } = race.id ? await race.play() : await api.post("/games/aviator/start", { bet });
       sess.current = data; settled.current = false;
       setCashed(null); setMult(1); setPhase("flying");
-      canvas.current?.fly(data.growth_rate, data.crash_point);
+      canvas.current?.fly(data.growth_rate, data.crash_point ?? 1e9);
+      if (data.crash_point == null) pollCrash(data);
       fbTrack("game_play", { value: bet, currency: "INR" });
       window.dispatchEvent(new Event("wallet:refresh"));
     } catch (e) {
@@ -88,6 +89,16 @@ export default function Aviator() {
       if (/insufficient/i.test(d)) showPopup({ type: "wallet", title: "Insufficient balance", message: "Add coins to your wallet to keep playing." });
       else showPopup({ type: "warning", title: "Can't start", message: d });
     } finally { setBusy(false); }
+  };
+
+  const pollCrash = (s) => {
+    const iv = setInterval(async () => {
+      if (sess.current !== s) return clearInterval(iv);
+      try {
+        const { data } = await api.post("/games/aviator/status", { session_id: s.session_id, nonce: s.nonce, multiplier: 0 });
+        if (data.crashed) { clearInterval(iv); canvas.current?.setCrash(data.crash_point); }
+      } catch (e) { clearInterval(iv); }
+    }, 250);
   };
 
   const settle = async (m, manual) => {
