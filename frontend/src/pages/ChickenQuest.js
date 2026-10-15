@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2, HandCoins, Footprints, Egg } from "lucide-react";
 import api, { formatApiError } from "@/lib/api";
@@ -10,10 +11,10 @@ import { fbTrack } from "@/lib/siteConfig";
 import { Chicken3D } from "@/components/Chicken3D";
 import { MuteButton } from "@/components/MuteButton";
 
-const MODES = ["easy", "medium", "hard", "hardcore"];
+const MODES = ["medium", "hard", "hardcore"];
 export default function ChickenQuest() {
   const [cfg, setCfg] = useState(null);
-  const [mode, setMode] = useState("easy");
+  const [mode, setMode] = useState("medium");
   const [bet, setBet] = useState(20);
   const [game, setGame] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -88,7 +89,7 @@ export default function ChickenQuest() {
         <MuteButton />
       </div>
 
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-3 gap-2 mb-4">
         {MODES.map((k) => (
           <button key={k} disabled={active || busy} onClick={() => { setMode(k); setGame(null); setHazardAt(null); }} data-testid={`chicken-mode-${k}`}
             className={`py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 ${mode === k ? (k === "hardcore" ? "bg-gradient-to-r from-red-700 to-pazer-red" : "bg-pazer-red") + " text-white pz-glow-box" : "bg-white/5 text-white/60 hover:bg-white/10"}`}>
@@ -101,6 +102,12 @@ export default function ChickenQuest() {
       <div className={`relative h-[330px] overflow-hidden rounded-3xl border ${hardcore ? "border-pazer-red/50" : "border-white/10"} bg-[radial-gradient(ellipse_at_top,#2a0a10,#050203_70%)]`} data-testid="chicken-road">
         <Chicken3D mults={mults} step={step} status={game?.status || "idle"} hazardAt={hazardAt} hardcore={hardcore} />
         <div className="sr-only" data-testid="chicken-sprite" />
+        <motion.div animate={{ y: [0, -6, 0], scale: [1, 1.05, 1] }} transition={{ duration: 1.6, repeat: Infinity }} data-testid="chicken-nest-prize"
+          className="pointer-events-none absolute right-3 top-3 rounded-2xl border border-amber-300/60 bg-black/75 px-3 py-2 text-right shadow-[0_0_20px_rgba(251,191,36,.35)]">
+          <div className="text-[10px] uppercase tracking-widest text-amber-200">🥚 Golden nest</div>
+          <div className="font-mono-pz text-lg font-extrabold text-amber-300">{((game?.entry_fee || bet) * (mults[steps - 1] || 0)).toFixed(2)}</div>
+          <div className="text-[10px] text-white/70">{mults[steps - 1]}× · now <b className="text-white">{step > 0 ? ((game?.entry_fee || bet) * mults[step - 1]).toFixed(2) : "0.00"}</b></div>
+        </motion.div>
       </div>
       <div className="mt-2 flex gap-1.5 overflow-x-auto no-scrollbar pb-1" data-testid="chicken-lane-strip">
         {mults.map((m, i) => {

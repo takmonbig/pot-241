@@ -20,7 +20,11 @@ export function Navbar() {
   useEffect(() => {
     const refetch = () => api.get("/wallet").then(({ data }) => setBalance(data.total_balance)).catch(() => {});
     window.addEventListener("wallet:refresh", refetch);
-    return () => window.removeEventListener("wallet:refresh", refetch);
+    // silent auto-refresh: balance stays live (admin approvals, room payouts) without reloading the page
+    const tick = () => { if (!document.hidden) window.dispatchEvent(new Event("wallet:refresh")); };
+    const iv = setInterval(tick, 8000);
+    window.addEventListener("focus", tick);
+    return () => { window.removeEventListener("wallet:refresh", refetch); clearInterval(iv); window.removeEventListener("focus", tick); };
   }, []);
 
   const doLogout = async () => { await logout(); nav("/welcome"); };

@@ -17,6 +17,7 @@ export default function Profile() {
   const { user, refreshUser } = useAuth();
   const site = useSiteConfig();
   const [stats, setStats] = useState(null);
+  const [byGame, setByGame] = useState([]);
   const [wallet, setWallet] = useState(null);
   const [kyc, setKyc] = useState({ full_name: "", method: "upi", account_number: "", ifsc: "", bank_name: "", account_name: "", upi_id: "", upi_name: "", usdt_wallet_address: "", usdt_network: "TRC20", usdt_qr_url: "" });
   const [busy, setBusy] = useState(false);
@@ -34,6 +35,7 @@ export default function Profile() {
 
   useEffect(() => {
     api.get("/stats").then(({ data }) => setStats(data)).catch(() => {});
+    api.get("/stats/by-game").then(({ data }) => setByGame(data)).catch(() => {});
     api.get("/wallet").then(({ data }) => setWallet(data)).catch(() => {});
   }, []);
 
@@ -91,6 +93,27 @@ export default function Profile() {
           <div className="text-white/80 text-sm">Win rate {winRate}% · {won} wins from {played} games</div>
         </div>
       </motion.div>
+        <div className="mb-4 rounded-3xl pz-glass p-4" data-testid="profile-by-game">
+          <h3 className="font-display text-xl mb-3">Your games</h3>
+          {byGame.length === 0 ? <p className="text-sm text-white/60">Play a game to see your per-game stats.</p> : (
+            <div className="space-y-2">
+              {byGame.map((g) => (
+                <div key={g.mode} className="rounded-2xl bg-black/40 border border-white/5 p-3" data-testid={`profile-game-${g.mode}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-display text-lg">{g.game}</span>
+                    <span className={`font-mono-pz font-bold ${g.net >= 0 ? "text-emerald-400" : "text-pazer-red"}`}>{g.net >= 0 ? "+" : ""}{g.net.toFixed(2)}</span>
+                  </div>
+                  <div className="mt-1 grid grid-cols-4 gap-2 text-center text-[11px] text-white/60">
+                    <div><div className="font-mono-pz text-sm text-white">{g.played}</div>played</div>
+                    <div><div className="font-mono-pz text-sm text-emerald-300">{g.won}</div>won</div>
+                    <div><div className="font-mono-pz text-sm text-amber-300">{g.earned.toFixed(0)}</div>earned</div>
+                    <div><div className="font-mono-pz text-sm text-pazer-red">{g.loss.toFixed(0)}</div>loss</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
       {/* Big stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">

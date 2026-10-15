@@ -33,9 +33,9 @@ EXTRA_DEFAULTS = {
         "segments": 12,
         "partial_collect_percent": 50,
         "themes": {
-            "earth": {"label": "Earth", "risk": "Low", "lose": [2, 2, 3, 3, 4]},
-            "water": {"label": "Water", "risk": "Medium", "lose": [3, 3, 4, 5, 6]},
-            "fire": {"label": "Fire", "risk": "High", "lose": [4, 5, 6, 7, 8]},
+            "earth": {"label": "Earth", "risk": "Low", "lose": [3, 3, 4, 4, 5]},
+            "water": {"label": "Water", "risk": "Medium", "lose": [4, 5, 5, 6, 7]},
+            "fire": {"label": "Fire", "risk": "High", "lose": [5, 6, 7, 8, 9]},
         },
     },
     "chicken_config": {
@@ -45,10 +45,9 @@ EXTRA_DEFAULTS = {
         "house_edge_percent": 3,
         "max_multiplier": 10000,
         "modes": {
-            "easy": {"label": "Easy", "steps": 24, "hazard": 0.04},
-            "medium": {"label": "Medium", "steps": 22, "hazard": 0.12},
-            "hard": {"label": "Hard", "steps": 20, "hazard": 0.20},
-            "hardcore": {"label": "Hardcore", "steps": 15, "hazard": 0.40},
+            "medium": {"label": "Sprint", "steps": 22, "hazard": 0.12},
+            "hard": {"label": "Pro", "steps": 20, "hazard": 0.20},
+            "hardcore": {"label": "Master", "steps": 15, "hazard": 0.40},
         },
     },
     "stack_config": {
@@ -70,9 +69,9 @@ EXTRA_DEFAULTS = {
         "per_perfect": 0.03,
         "max_multiplier": 20,
         "challenges": [
-            {"id": "sprint", "label": "Sprint", "height": 10, "seconds": 30, "multiplier": 2},
-            {"id": "pro", "label": "Pro", "height": 20, "seconds": 45, "multiplier": 4},
-            {"id": "master", "label": "Master", "height": 30, "seconds": 60, "multiplier": 8},
+            {"id": "sprint", "label": "Sprint", "height": 15, "seconds": 25, "multiplier": 5},
+            {"id": "pro", "label": "Pro", "height": 25, "seconds": 40, "multiplier": 10},
+            {"id": "master", "label": "Master", "height": 45, "seconds": 60, "multiplier": 20},
         ],
         # multiplayer
         "mp_enabled": True,
@@ -227,12 +226,22 @@ def sanitize_extra_config(data: dict):
     vc = data.get("vortex_config")
     if isinstance(vc, dict):
         seg = int(vc.get("segments", 12) or 12)
-        for t in (vc.get("themes") or {}).values():
+        themes = vc.get("themes") if isinstance(vc.get("themes"), dict) else {}
+        for k in list(themes):
+            if not isinstance(themes[k], dict):
+                bad.append(f"vortex_config.themes.{k}")
+                continue
+            t = themes[k]
             lose = [int(max(1, min(seg - 1, _num(x, 1)))) for x in (t.get("lose") or [])]
             t["lose"] = lose or [2, 2, 3, 3, 4]
     cc = data.get("chicken_config")
     if isinstance(cc, dict):
-        for m in (cc.get("modes") or {}).values():
+        modes = cc.get("modes") if isinstance(cc.get("modes"), dict) else {}
+        for k in list(modes):
+            if not isinstance(modes[k], dict):
+                bad.append(f"chicken_config.modes.{k}")
+                continue
+            m = modes[k]
             m["steps"] = int(max(2, min(60, _num(m.get("steps"), 20))))
             m["hazard"] = max(0.005, min(0.9, _num(m.get("hazard"), 0.1)))
     for key, lo, hi, d in [("min_height", 1, 100, 5), ("per_level", 0, 5, 0.08), ("per_perfect", 0, 5, 0.03),
@@ -492,7 +501,7 @@ async def chicken_start(body: ChickenStartReq, user: dict = Depends(S.get_curren
     cc = cfg.get("chicken_config", EXTRA_DEFAULTS["chicken_config"])
     if not cfg["game_enabled"] or not cc.get("enabled", True):
         raise HTTPException(status_code=403, detail="Chicken Quest is currently disabled")
-    mode = body.mode if body.mode in cc["modes"] else "easy"
+    mode = body.mode if body.mode in cc["modes"] else next(iter(cc["modes"]))
     bet = round(float(body.bet), 2)
     _bet_checks(cc, bet, "chicken")
     u = await _load_user_with_balance(user, bet)
@@ -673,7 +682,7 @@ async def stack_start(body: StackStartReq, user: dict = Depends(S.get_current_us
     cfg, sc = await _stack_config()
     if not cfg["game_enabled"] or not sc.get("enabled", True):
         raise HTTPException(status_code=403, detail="Tower Stack is currently disabled")
-    mode = body.mode if body.mode in ("endless", "timed") else "endless"
+    mode = "timed"  # endless mode removed: Tower is timed challenges only
     challenge = None
     if mode == "timed":
         challenge = next((c for c in sc.get("challenges", []) if c["id"] == body.challenge_id), None)
@@ -996,3 +1005,26 @@ async def extra_config():
         "chicken": {**cc, "multipliers": {k: chicken_multipliers(cc, k) for k in cc["modes"]}},
         "stack": {k: v for k, v in sc.items()},
     }
+
+
+GAME_LABELS = {"fixed": "Stopwatch", "aviator": "Aviator", "tower": "T Mines", "vortex": "Vortex Spin",
+               "chicken": "Chicken Quest", "stack": "Tower", "stack_mp": "Tower Versus", "1v1": "1v1 Duel",
+               "multiplayer": "Rooms"}
+
+
+@router.get("/stats/by-game")
+async def stats_by_game(user: dict = Depends(S.get_current_user)):
+    rows = await S.db.games.aggregate([
+        {"$match": {"user_id": str(user["_id"])}},
+        {"$group": {"_id": "$mode", "played": {"$sum": 1},
+                    "won": {"$sum": {"$cond": [{"$eq": ["$result", "won"]}, 1, 0]}},
+                    "wagered": {"$sum": {"$ifNull": ["$entry_fee", 0]}},
+                    "earned": {"$sum": {"$ifNull": ["$prize", 0]}}}},
+    ]).to_list(50)
+    out = []
+    for r in rows:
+        net = round(r["earned"] - r["wagered"], 2)
+        out.append({"mode": r["_id"], "game": GAME_LABELS.get(r["_id"], str(r["_id"]).title()), "played": r["played"],
+                    "won": r["won"], "lost": r["played"] - r["won"], "wagered": round(r["wagered"], 2),
+                    "earned": round(r["earned"], 2), "net": net, "loss": round(max(0, -net), 2)})
+    return sorted(out, key=lambda x: -x["played"])

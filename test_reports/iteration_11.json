@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration 11: tested the lag fix (FPS), the six 3D games, sound/mute, gating of the floating bars, and the backend fixes. FPS over 3s (headless, no GPU, 390px mobile): /home 60, /wallet 59, /profile 60, /admin 60 (desktop). Games: stopwatch 60 (before start), aviator 44, tower 50, vortex 37, chicken 26, stack 59. No page errors on any page. Backend: 36/37 pass. Updated test_vortex_chicken_stack.py for the phase/jitter engine (18/18 pass), test_aviator_tower.py 9/9 pass, new test_iter11_fixes.py 9/10 pass. Verified: forfeit of active vortex and chicken rounds (status 'forfeited', game recorded with details.forfeited, seed revealed in /fair/rounds, old token gives 409); /games/vortex/active and /chicken/active (resumable session, then {active:false}); vortex 'won' only if total > bet (partial collect then loss is 'lost'); admin null/'garbage'/'NaN' gives 400 with config unchanged; chicken hazard 5.0 clamped to 0.9 and restored; versus heights hidden while LIVE until I submit (bot submitted but no height shown), visible after COMPLETED; /play after the deadline gives 409; /finish into a COMPLETED room is ignored (height stays 0); the bot_like flag works on a machine-precision run (10 perfects gives flagged, payout 0); human-like runs (8-12ms noise) are not flagged. FAIL: PUT /admin/config with vortex_config.themes = {earth: 'garbage'} returns 500 (AttributeError 'str' object has no attribute 'get' in sanitize_extra_config). Frontend: Stopwatch 3D readout updates live (0.19, 0.71 ... 4.61) and the value after STOP (5.01) matches result-time 5.01. Aviator: canvas OK, multiplier rises, manual cash-out at 1.31x (+26), crash shows FLEW AWAY, history updates, auto cash-out at 1.20x works. Tower: tiles tower-tile-{row}-{col} move up row by row, gems shown, cash-out 45.00, bombs revealed, win popup. Vortex: themes switch, wheel canvas, a loss ('Vortex broke'), partial 14.40 (button then disabled), spin, collect, wallet math matches. Chicken: lane counts easy 24 / medium 22 / hard 20 / hardcore 15, GO x3, collect at lane 3, result shown. Stack: in-page timed taps gave height 11 with 8 perfects, UI 1.12x = 22.40, matching the server; a random first tap toppled at 0 (by design). Mute: toggles aria-label Mute/Unmute, localStorage tu_muted 1/0, persists across games. quick-actions and win-ticker are absent on all /games/* pages and present on /home, /wallet and /profile.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/admin/config", "issue": "A nested non-dict value (vortex_config.themes.earth = 'garbage', or a chicken_config.modes entry that is a string) gives 500 AttributeError in sanitize_extra_config (t.get / m.get on a str). Also nested null values (themes.lose items, modes.hazard/steps = null) are silently replaced with defaults instead of returning 400, which is inconsistent with the top-level rule."},
+      {"endpoint": "POST /api/games/stack/finish", "issue": "The anti-bot is easy to bypass. phases and jitter are sent to the client, so a script that computes the perfect time and adds ±8-12ms random noise gets 100% perfects, is not flagged, and wins every timed/versus room (proven in pytest with 30/30 perfects in versus, and in the UI). This is acceptable for an MVP but not real protection: consider a server-side input cadence or variance check, reaction-time statistics, or not revealing future phases."},
+      {"endpoint": "POST /api/games/stack/finish (versus)", "issue": "There is no deadline check in finish itself. A run finished after the deadline but before the 3s tick flips the room to SETTLING is still accepted (_mp_submit only checks status LIVE)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Vortex/Chicken resume", "issue": "The new GET /games/vortex/active and /games/chicken/active are never called by the frontend (grep finds no '/active' in src). If a user leaves mid-round and comes back, they can't resume. The next Start silently forfeits the round, losing the bet and the at-risk amount without warning.", "affected_selectors": ["vortex-start-btn", "chicken-start-btn"]}
+    ],
+    "design_issues": [
+      {"screen": "Stopwatch result (mobile)", "issues": ["On the result screen, faded 'Play again (20) & Win 100' and loss-replay text are visible through the stopwatch dial above the result card (layered or semi-transparent). This may be a transition captured mid-animation; please verify."]},
+      {"screen": "Chicken / Tower / Stack during play (mobile 390px)", "issues": ["The page auto-scrolls so the sticky header hides the top part of the 3D canvas (the chicken sits at the very top edge of the visible road)."]},
+      {"screen": "Admin console (desktop)", "issues": ["The header content (logo and Sign out) is narrower and offset from the body container, so the left and right edges don't line up."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_vortex_chicken_stack.py", "/app/backend/tests/test_iter11_fixes.py", "/app/backend/tests/test_aviator_tower.py", "/app/test_reports/pytest/pytest_iter11.xml"],
+  "action_items": [
+    "Fix the 500 in sanitize_extra_config for nested non-dict values: check isinstance(t, dict) / isinstance(m, dict), add bad entries to `bad`, and return 400 for null or garbage nested numbers (themes.lose, modes.hazard/steps).",
+    "Wire the /games/vortex/active and /games/chicken/active endpoints into VortexSpin.js and ChickenQuest.js on mount to resume a round, or at least warn before Start forfeits an active round.",
+    "Optional: harden the Tower Stack anti-bot (noise-added perfect scripts pass) and reject a versus /finish after the deadline in stack_finish.",
+    "Check the faded overlay text on the Stopwatch result screen."
+  ],
+  "critical_code_review_comments": [
+    "games_extra.py is 999 lines, above the 700-line limit; split it into vortex.py, chicken.py, stack.py and fair.py.",
+    "sanitize_extra_config: int(vc.get('segments', 12) or 12) runs after fix() so it is OK, but nested loops assume dicts (this causes the 500).",
+    "_forfeit_active for vortex records won = total > entry_fee, which is consistent with the new rule; it credits nothing extra (the partial was already credited), which is correct.",
+    "The perf CSS at the end of index.css uses !important to globally remove backdrop-filter and animations on .pz-scifi. It works (60fps), but the older body.pz-gaming rules are now redundant."
+  ],
+  "updated_files": ["/app/backend/tests/test_vortex_chicken_stack.py", "/app/backend/tests/test_iter11_fixes.py"],
+  "success_rate": {"backend": "97% (36/37)", "frontend": "95% (all flows pass; resume not wired)"},
+  "seed_data_creation": "None. The player balance was set to 10000 by the test fixtures. Admin config was restored after the tests (chicken hardcore hazard 0.4, all 3 games enabled, vortex themes intact).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the pytest files with -n 0 (pytest.ini enables xdist, and parallel workers interfere through the shared balance and forfeits). The perfect_taps(eng, n, noise) helper in test_vortex_chicken_stack.py is phase/jitter aware; noise=True gives human-like runs. Versus tests speed up LIVE by backdating players.0.joined_at and bot_finish_at/deadline in Mongo. test_garbage_nested_theme is expected to fail until sanitize is fixed. 1v1/Multiplayer rooms using the 3D Stopwatch were NOT tested this iteration.",
+  "rca of the issue": "Admin config 500: in sanitize_extra_config, `for t in (vc.get('themes') or {}).values(): t.get('lose')` raises AttributeError when a theme value is not a dict; the same applies to chicken modes `m.get`. Repro: PUT /api/admin/config {data:{vortex_config:{...valid, themes:{earth:'garbage'}}}} returns 500. Fix: skip or flag non-dict entries and return 400."
+}

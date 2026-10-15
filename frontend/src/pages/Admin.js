@@ -109,6 +109,19 @@ export default function Admin() {
     api.get("/admin/audit-logs").then(({ data }) => setLogs(data)).catch(() => {});
   }, []);
   useEffect(() => { loadAll(); }, [loadAll]);
+  // silent background refresh (never touches config edits / search box / open dialogs)
+  useEffect(() => {
+    const f = () => {
+      if (document.hidden) return;
+      api.get("/admin/stats").then(({ data }) => setStats(data)).catch(() => {});
+      api.get("/admin/withdrawals").then(({ data }) => setWithdrawals(data)).catch(() => {});
+      api.get("/admin/deposits").then(({ data }) => setDeposits(data)).catch(() => {});
+      api.get("/admin/audit-logs").then(({ data }) => setLogs(data)).catch(() => {});
+    };
+    const i = setInterval(f, 8000);
+    window.addEventListener("focus", f);
+    return () => { clearInterval(i); window.removeEventListener("focus", f); };
+  }, []);
   useEffect(() => {
     if (tab !== "live") return;
     const f = () => { api.get("/admin/live").then(({ data }) => setLive(data)).catch(() => {}); api.get("/admin/custom-rooms").then(({ data }) => setCustomRooms(data)).catch(() => {}); };

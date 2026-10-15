@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Layers, Loader2, Timer, Infinity as InfinityIcon, Users, Trophy, Bot, Zap, Play } from "lucide-react";
+import { ArrowLeft, Layers, Loader2, Timer, Users, Trophy, Bot, Zap, Play } from "lucide-react";
 import api, { formatApiError } from "@/lib/api";
 import { showPopup } from "@/components/CenterPopup";
 import { showWin } from "@/components/WinCelebration";
@@ -12,15 +12,11 @@ import { fbTrack } from "@/lib/siteConfig";
 import { MuteButton } from "@/components/MuteButton";
 import { sfx } from "@/lib/sfx";
 
-const TABS = [
-  { id: "endless", label: "Endless", icon: InfinityIcon },
-  { id: "timed", label: "Timed", icon: Timer },
-  { id: "versus", label: "Versus", icon: Users },
-];
+const TABS = [{ id: "timed", label: "Timed Challenges", icon: Timer }];
 
 export default function TowerStack() {
   const [cfg, setCfg] = useState(null);
-  const [tab, setTab] = useState("endless");
+  const [tab, setTab] = useState("timed");
   const [bet, setBet] = useState(20);
   const [challengeId, setChallengeId] = useState("sprint");
   const [phase, setPhase] = useState("idle"); // idle | playing | submitting | done
@@ -163,11 +159,11 @@ export default function TowerStack() {
       <div className="flex items-center gap-3 mb-4">
         <Link to="/home" data-testid="stack-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Layers className="h-5 w-5 text-pazer-red" />
-        <h1 className="font-display font-bold text-2xl tracking-tight">Tower Stack</h1>
+        <h1 className="font-display font-bold text-2xl tracking-tight">Tower</h1>
         <MuteButton /><span className="rounded-full bg-emerald-500/15 text-emerald-300 text-[11px] px-2.5 py-1 font-semibold">Skill game</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="hidden">
         {TABS.map((t) => (
           <button key={t.id} disabled={playing || phase === "submitting"} onClick={() => { setTab(t.id); setResult(null); setPhase("idle"); }} data-testid={`stack-tab-${t.id}`}
             className={`py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${tab === t.id ? "bg-pazer-red text-white pz-glow-box" : "bg-white/5 text-white/60 hover:bg-white/10"}`}>

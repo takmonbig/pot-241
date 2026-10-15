@@ -36,7 +36,7 @@ export function Tower3D({ rows, cols, mults, activeRow, picks, bombs, status, on
   useEffect(() => {
     const S = createStage(mount.current, { fov: 40, exposure: 1.1, envIntensity: 0.7 });
     const { scene, camera, renderer } = S;
-    scene.fog = new THREE.Fog(0x0a0306, 12, 30);
+    scene.fog = new THREE.Fog(0x0a0306, 16, 40);
     scene.add(new THREE.AmbientLight(0xffffff, 0.25));
     const sun = new THREE.DirectionalLight(0xffe0c0, 1.8); sun.position.set(4, 12, 8); sun.castShadow = true;
     sun.shadow.mapSize.set(512, 512); Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 });
@@ -68,7 +68,7 @@ export function Tower3D({ rows, cols, mults, activeRow, picks, bombs, status, on
         }
         tiles.push(row);
         const lb = textSprite(`${(props.current.mults[r] || 0).toFixed(2)}x`, { size: 56, color: "#ffffff", bg: "rgba(0,0,0,0.55)", scale: 0.55 });
-        lb.position.set(-width / 2 - 1.15, y + 0.15, 0.4); tower.add(lb); labels.push(lb);
+        lb.position.set(-width / 2 - 0.95, y + 0.15, 0.6); tower.add(lb); labels.push(lb);
       }
       // pillars
       [-1, 1].forEach((s) => {
@@ -127,9 +127,11 @@ export function Tower3D({ rows, cols, mults, activeRow, picks, bombs, status, on
       camY = damp(camY, focus * ROW_H, 4, dt);
       shake = Math.max(0, shake - dt);
       const sx = shake ? rand(-1, 1) * shake * 0.3 : 0;
-      const dist = 6.2 + width * 0.55;
-      camera.position.set(sx + Math.sin(now / 4000) * 0.4, camY + 3.0, dist);
-      camera.lookAt(0, camY + 0.1, 0);
+      // keep ~5 floors in view: active floor near the bottom, next floors above it
+      const dist = (12.5 + width * 0.6) * Math.max(1, 1.05 / camera.aspect);
+      const lookY = camY + ROW_H * 1.6;
+      camera.position.set(sx + Math.sin(now / 4000) * 0.4, lookY + 2.2, dist);
+      camera.lookAt(0, lookY, 0);
       sun.position.set(4, camY + 12, 8); sun.target.position.set(0, camY, 0);
       torches.forEach(({ l, s }) => {
         l.position.set(s * (width / 2 + 2.1), camY + 1.6, -0.6);
@@ -171,7 +173,7 @@ export function Tower3D({ rows, cols, mults, activeRow, picks, bombs, status, on
   useEffect(() => { api3.current.sync?.(); }, [rows, cols, mults, activeRow, picks, bombs, status]);
 
   return (
-    <div className="relative h-[440px] w-full" data-testid="tower-grid">
+    <div className="relative h-[520px] w-full" data-testid="tower-grid">
       <div ref={mount} className="absolute inset-0" data-testid="tower-3d" />
       {rects.map((r) => (
         <button key={r.c} onClick={() => onPick(r.c)} data-testid={`tower-tile-${activeRow}-${r.c}`} aria-label={`Tile ${r.c + 1}`}

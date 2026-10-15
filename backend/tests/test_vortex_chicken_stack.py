@@ -54,8 +54,25 @@ def pf_floats(server_seed, client_seed, nonce, count):
     return out[:count]
 
 
-def perfect_taps(n):
-    return [round(500 / min(ENG["max_speed"], ENG["base_speed"] + i * ENG["speed_step"])) for i in range(n)]
+def _speed(eng, i):
+    return min(eng["max_speed"], eng["base_speed"] + i * eng["speed_step"]) * eng["jitter"][i % len(eng["jitter"])]
+
+
+def perfect_taps(eng, n, noise=False, seed=1):
+    """Exact perfect timing per block (phase/jitter aware). noise=True -> human-like 8-12ms error (still perfect)."""
+    import random
+    rnd = random.Random(seed)
+    out = []
+    for i in range(n):
+        sp, ph = _speed(eng, i), eng["phases"][i % len(eng["phases"])]
+        x = (0.5 - ph) % 2.0
+        t = x / sp * 1000
+        if t < 150:
+            t = (x + 2.0) / sp * 1000
+        if noise:
+            t += rnd.choice([-1, 1]) * rnd.uniform(8, 12)
+        out.append(int(round(t)))
+    return out
 
 
 # ---------------- Provably fair ----------------
@@ -208,7 +225,8 @@ class TestStackSolo:
         assert st.status_code == 200, st.text
         st = st.json()
         assert st["engine"]["base_speed"] == 0.55
-        taps = perfect_taps(8)
+        assert len(st["engine"]["phases"]) >= 30 and len(st["engine"]["jitter"]) >= 30
+        taps = perfect_taps(st["engine"], 8, noise=True)
         time.sleep(sum(taps) / 1000 + 0.3)
         r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": taps}).json()
         assert r["flagged"] is False
@@ -218,15 +236,21 @@ class TestStackSolo:
 
     def test_endless_below_min_height(self, s):
         st = s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "endless"}).json()
-        taps = perfect_taps(3)
+        taps = perfect_taps(st["engine"], 3, noise=True)
         time.sleep(sum(taps) / 1000 + 0.2)
         r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": taps}).json()
         assert r["result"]["height"] == 3 and r["prize"] == 0
 
     def test_anticheat(self, s):
         st = s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "endless"}).json()
-        r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": perfect_taps(20)}).json()
+        r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": perfect_taps(st["engine"], 20)}).json()
         assert r["flagged"] is True and r["prize"] == 0
+        # machine-precision perfect run (timing OK) -> bot_like flag
+        st = s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "endless"}).json()
+        taps = perfect_taps(st["engine"], 10)
+        time.sleep(sum(taps) / 1000 + 0.3)
+        r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": taps}).json()
+        assert r["flagged"] is True and r["prize"] == 0 and r["result"]["bot_like"] is True
         st = s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "endless"}).json()
         time.sleep(1)
         r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": [50, 909]}).json()
@@ -236,7 +260,7 @@ class TestStackSolo:
         assert s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "timed"}).status_code == 400
         st = s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "timed", "challenge_id": "sprint"}).json()
         assert st["challenge"]["height"] == 10
-        taps = perfect_taps(12)
+        taps = perfect_taps(st["engine"], 12, noise=True)
         time.sleep(sum(taps) / 1000 + 0.3)
         r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": taps}).json()
         assert r["won"] is True and r["multiplier"] == 2 and r["prize"] == 40
@@ -244,7 +268,7 @@ class TestStackSolo:
 
     def test_timed_fail(self, s):
         st = s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "timed", "challenge_id": "sprint"}).json()
-        taps = perfect_taps(4)
+        taps = perfect_taps(st["engine"], 4, noise=True)
         time.sleep(sum(taps) / 1000 + 0.2)
         r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": taps}).json()
         assert r["won"] is False and r["prize"] == 0
@@ -308,7 +332,7 @@ class TestStackVersus:
         pl = pl.json()
         assert abs(bal(s) - (b0 - 50)) < 0.01  # no extra debit
         assert s.post(f"{API}/games/stack/rooms/{room['id']}/play").status_code == 409
-        taps = perfect_taps(30)
+        taps = perfect_taps(pl["engine"], 30, noise=True)
         time.sleep(sum(taps) / 1000 + 0.3)
         f = s.post(f"{API}/games/stack/finish", json={"session_id": pl["session_id"], "token": pl["token"], "taps": taps}).json()
         assert f["flagged"] is False and f["result"]["height"] == 30
