@@ -106,7 +106,7 @@ export default function Profile() {
                   <div className="mt-1 grid grid-cols-4 gap-2 text-center text-[11px] text-white/60">
                     <div><div className="font-mono-pz text-sm text-white">{g.played}</div>played</div>
                     <div><div className="font-mono-pz text-sm text-emerald-300">{g.won}</div>won</div>
-                    <div><div className="font-mono-pz text-sm text-amber-300">{g.earned.toFixed(0)}</div>earned</div>
+                    <div><div className="font-mono-pz text-sm text-amber-300">{g.earned.toFixed(2)}</div>earned</div>
                     <div><div className="font-mono-pz text-sm text-pazer-red">{g.loss.toFixed(0)}</div>loss</div>
                   </div>
                 </div>

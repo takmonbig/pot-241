@@ -8,6 +8,8 @@ import { fbTrack } from "@/lib/siteConfig";
 import { Tower3D } from "@/components/Tower3D";
 import { MuteButton } from "@/components/MuteButton";
 import { sfx } from "@/lib/sfx";
+import { HowToPlay } from "@/components/HowToPlay";
+import { useRace, RaceBar } from "@/components/Race";
 
 const QUICK = [20, 50, 100, 200, 500];
 const DIFFS = ["easy", "medium", "hard"];
@@ -25,6 +27,9 @@ export default function Tower() {
   const [picks, setPicks] = useState({});
   const [bombs, setBombs] = useState(null);
   const [busy, setBusy] = useState(false);
+  const race = useRace();
+  useEffect(() => { if (race.room?.param) setDiff(race.room.param); }, [race.room?.param]);
+  const winOrRace = (p) => { if (race.id) { race.finished(); showPopup({ type: "success", title: "Race score submitted", message: "Check the lobby to see how you rank." }); } else showWin(p); };
 
   useEffect(() => { api.get("/config/public").then(({ data }) => { setCfg(data.tower_config); setBet(data.tower_config.min_bet || 20); }).catch(() => {}); }, []);
   const active = game?.status === "active";
@@ -38,10 +43,10 @@ export default function Tower() {
   const cashValue = game && game.row > 0 ? (game.entry_fee * mults[game.row - 1]).toFixed(2) : "0.00";
 
   const start = async () => {
-    if (bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
+    if (!race.id && bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
     setBusy(true);
     try {
-      const { data } = await api.post("/games/tower/start", { bet, difficulty: diff });
+      const { data } = race.id ? await race.play() : await api.post("/games/tower/start", { bet, difficulty: diff });
       setGame({ ...data, row: 0, status: "active" }); setPicks({}); setBombs(null);
       fbTrack("game_play", { value: bet, currency: "INR" });
       window.dispatchEvent(new Event("wallet:refresh"));
@@ -61,11 +66,11 @@ export default function Tower() {
       setPicks((p) => ({ ...p, [r]: col }));
       if (!data.safe) {
         setBombs(data.bombs_layout); setGame((g) => ({ ...g, status: "lost" }));
-        window.dispatchEvent(new Event("wallet:refresh"));
+        window.dispatchEvent(new Event("wallet:refresh")); if (race.id) race.finished();
         setTimeout(() => showPopup({ type: "warning", title: "Boom! Tower collapsed", message: "Play again and climb higher." }), 700);
       } else if (data.finished) {
         setBombs(data.bombs_layout); setGame((g) => ({ ...g, row: data.row, status: "won" }));
-        window.dispatchEvent(new Event("wallet:refresh")); showWin(data.prize);
+        window.dispatchEvent(new Event("wallet:refresh")); winOrRace(data.prize);
       } else setGame((g) => ({ ...g, row: data.row }));
     } catch (e) { showPopup({ type: "warning", title: "Something went wrong", message: formatApiError(e.response?.data?.detail) }); }
     finally { setBusy(false); }
@@ -76,7 +81,7 @@ export default function Tower() {
     try {
       const { data } = await api.post("/games/tower/cashout", { session_id: game.session_id, nonce: game.nonce });
       setBombs(data.bombs_layout); setGame((g) => ({ ...g, status: "won" }));
-      sfx.coin(); window.dispatchEvent(new Event("wallet:refresh")); showWin(data.prize);
+      sfx.coin(); window.dispatchEvent(new Event("wallet:refresh")); winOrRace(data.prize);
     } catch (e) { showPopup({ type: "warning", title: "Can't cash out", message: formatApiError(e.response?.data?.detail) }); }
     finally { setBusy(false); }
   };
@@ -87,12 +92,13 @@ export default function Tower() {
         <Link to="/home" data-testid="tower-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Gem className="h-5 w-5 text-emerald-400" />
         <h1 className="font-display font-bold text-2xl tracking-tight">T Mines</h1>
-        <MuteButton />
+        <HowToPlay k="tower" /><MuteButton className="!ml-0" />
       </div>
+      <RaceBar race={race} />
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         {DIFFS.map((k) => (
-          <button key={k} disabled={active} onClick={() => { setDiff(k); setGame(null); setPicks({}); setBombs(null); }} data-testid={`tower-diff-${k}`}
+          <button key={k} disabled={active || !!race.id} onClick={() => { setDiff(k); setGame(null); setPicks({}); setBombs(null); }} data-testid={`tower-diff-${k}`}
             className={`py-2.5 rounded-xl text-sm font-bold capitalize transition-colors disabled:opacity-50 ${diff === k ? "bg-pazer-red text-white pz-glow-box" : "bg-white/5 text-white/60 hover:bg-white/10"}`}>
             {k}<span className="block text-[10px] font-normal opacity-70">{cfg?.difficulties?.[k]?.cols || "-"} tiles · {cfg?.difficulties?.[k]?.bombs || 1} bomb</span>
           </button>
@@ -112,7 +118,7 @@ export default function Tower() {
           </button>
         ) : (
           <>
-            <div>
+            <div className={race.id ? "hidden" : ""}>
               <div className="text-xs uppercase tracking-wider text-white/50 mb-2">Bet (min {cfg?.min_bet || 20})</div>
               <div className="flex items-center bg-black/40 border border-white/10 rounded-xl focus-within:border-pazer-red transition-colors mb-2">
                 <Coins className="h-5 w-5 text-pazer-red ml-4" />
@@ -127,12 +133,12 @@ export default function Tower() {
                 ))}
               </div>
             </div>
-            <div className="flex justify-between text-sm text-white/50">
+            <div className={`flex justify-between text-sm text-white/50 ${race.id ? "hidden" : ""}`}>
               <span>Top prize</span><span className="font-mono-pz text-green-400 font-bold" data-testid="tower-top-prize">{(bet * (mults[rows - 1] || 0)).toFixed(2)}</span>
             </div>
-            <button onClick={start} disabled={busy} data-testid="tower-start-btn"
+            <button onClick={start} disabled={busy || (race.id && race.locked)} data-testid="tower-start-btn"
               className="w-full py-4 rounded-2xl bg-pazer-red hover:bg-pazer-redhover font-extrabold text-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-              {busy && <Loader2 className="h-5 w-5 animate-spin" />} {game ? "Play Again" : "Start"} · {bet}
+              {busy && <Loader2 className="h-5 w-5 animate-spin" />} {race.id ? (race.locked ? "Race run used" : "Start race run") : `${game ? "Play Again" : "Start"} · ${bet}`}
             </button>
           </>
         )}

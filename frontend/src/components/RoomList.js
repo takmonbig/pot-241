@@ -27,7 +27,7 @@ const STATUS_COLORS = {
   REFUNDED: "text-blue-400 bg-blue-400/10",
 };
 
-export function RoomList({ mode, title, subtitle, Icon = Users, payoutLabel }) {
+export function RoomList({ mode, title, subtitle, Icon = Users, payoutLabel, embedded }) {
   const [tab, setTab] = useState("active");
   const [rooms, setRooms] = useState([]);
   const [confirm, setConfirm] = useState(null);
@@ -56,12 +56,14 @@ export function RoomList({ mode, title, subtitle, Icon = Users, payoutLabel }) {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
-      <div className="flex items-center gap-2 mb-1">
-        <Icon className="h-5 w-5 text-pazer-red" />
-        <h1 className="font-display font-bold text-2xl tracking-tight">{title}</h1>
-      </div>
-      <p className="text-white/50 text-sm mb-5">{subtitle}</p>
+    <div className={embedded ? "" : "mx-auto max-w-5xl px-4 py-6"}>
+      {!embedded && (<>
+        <div className="flex items-center gap-2 mb-1">
+          <Icon className="h-5 w-5 text-pazer-red" />
+          <h1 className="font-display font-bold text-2xl tracking-tight">{title}</h1>
+        </div>
+        <p className="text-white/50 text-sm mb-5">{subtitle}</p>
+      </>)}
 
       <div className="flex gap-2 mb-5">
         {["active", "completed"].map((t) => (

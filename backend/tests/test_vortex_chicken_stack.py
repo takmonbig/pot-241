@@ -259,12 +259,12 @@ class TestStackSolo:
     def test_timed_sprint_win(self, s):
         assert s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "timed"}).status_code == 400
         st = s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "timed", "challenge_id": "sprint"}).json()
-        assert st["challenge"]["height"] == 10
-        taps = perfect_taps(st["engine"], 12, noise=True)
+        assert st["challenge"]["height"] == 15 and st["challenge"]["seconds"] == 25
+        taps = perfect_taps(st["engine"], 16, noise=True)
         time.sleep(sum(taps) / 1000 + 0.3)
         r = s.post(f"{API}/games/stack/finish", json={"session_id": st["session_id"], "token": st["token"], "taps": taps}).json()
-        assert r["won"] is True and r["multiplier"] == 2 and r["prize"] == 40
-        assert r["result"]["height"] == 10
+        assert r["won"] is True and r["multiplier"] == 5 and r["prize"] == 100, (sum(taps), r)
+        assert r["result"]["height"] == 15
 
     def test_timed_fail(self, s):
         st = s.post(f"{API}/games/stack/start", json={"bet": 20, "mode": "timed", "challenge_id": "sprint"}).json()
@@ -281,14 +281,14 @@ class TestConfig:
         assert r.status_code == 200
         d = r.json()
         assert set(d["vortex"]["tables"]) == {"earth", "water", "fire"}
-        assert set(d["chicken"]["multipliers"]) == {"easy", "medium", "hard", "hardcore"}
+        assert set(d["chicken"]["multipliers"]) == {"medium", "hard", "hardcore"}
         assert len(d["stack"]["challenges"]) == 3
 
     def test_admin_disable_enable(self, s, admin):
         d = requests.get(f"{API}/games/extra/config").json()
         for key, url, body in [("vortex", "vortex/start", {"bet": 20, "theme": "earth"}),
                                ("chicken", "chicken/start", {"bet": 20, "mode": "easy"}),
-                               ("stack", "stack/start", {"bet": 20, "mode": "endless"})]:
+                               ("stack", "stack/start", {"bet": 20, "mode": "timed", "challenge_id": "sprint"})]:
             c = dict(d[key])
             c.pop("tables", None)
             c.pop("multipliers", None)

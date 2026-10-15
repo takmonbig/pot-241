@@ -20,6 +20,7 @@ import OneVsOne from "@/pages/OneVsOne";
 import Multiplayer from "@/pages/Multiplayer";
 import Leaderboard from "@/pages/Leaderboard";
 import RoomGame from "@/pages/RoomGame";
+import RaceRoom from "@/pages/RaceRoom";
 import Wallet from "@/pages/Wallet";
 import Profile from "@/pages/Profile";
 import Support from "@/pages/Support";
@@ -61,6 +62,7 @@ function App() {
               <Route path="/multiplayer" element={<Multiplayer />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/room/:id" element={<RoomGame />} />
+              <Route path="/race/:id" element={<RaceRoom />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/profile" element={<Profile />} />
             </Route>

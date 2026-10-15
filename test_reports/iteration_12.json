@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 12: tested both backend and frontend for the hub redesign, the renames, timed-only Tower, T Mines floors, the Vortex first-spin loophole, Chicken modes and the nest prize, Profile per-game stats, silent auto-refresh, the admin nested-garbage 400, and the lag regression. Backend: new test_iter12.py passed 13/13. Config shows stack challenges sprint 15/25s/5x, pro 25/40s/10x, master 45/60s/20x and mp_enabled=false. Vortex lose counts are earth [3,3,4,4,5], water [4,5,5,6,7], fire [5,6,7,8,9], so first-spin survival is 0.75 / 0.6667 / 0.5833. Chicken has modes medium/hard/hardcore labelled Sprint/Pro/Master. Stack start with mode endless and no challenge gives 400 'Pick a timed challenge'; with challenge_id it is forced to timed (15 blocks in 25s). In 40 fire first spins via the API, 14 were losses (35%, expected ~42%), and every landing matched the HMAC provably-fair recomputation and the lose_slots. With 'easy', chicken start falls back to medium. /stats/by-game returns all fields, the math is consistent (played=won+lost, net=earned-wagered, loss=max(0,-net)), labels are tower='T Mines', stack='Tower', fixed='Stopwatch', and counts match the games collection. A garbage vortex theme or chicken mode gives 400, and the config was restored. The timed sprint win with 16 perfect taps pays 5x (100). Frontend (390/430 mobile, 1920 desktop): The hub has 6 cards in a 2-column grid (stopwatch and vortex span 2 columns) with neon borders. Titles are T Mines -> /games/tower and Tower -> /games/stack. The Ken Burns animation runs (the transform changes over time), the sweep and 7 sparks are present, all images load, .font-display computes to 'Lilita One' and the font is loaded, and there is no fairness link or text. Hub FPS is 60. Silent refresh works: after a mongo balance change to 7777, the header showed 7,777 in ~8s without a reload. Tower page: title 'Tower', no Endless or Versus tabs, the challenge cards show the correct values, and a sprint run works (timer 24.9s counting down, Space taps, 'Challenge failed' result with height 2). T Mines: header OK, and 7 floors with multiplier labels are visible at both 390 and 430 when idle and about 6 during play. Start, tile 0-0 and cash out at 25.40 work. Chicken: no easy button, Sprint/Pro/Master with Sprint selected by default, 22 lane chips 1.1x..16.15x, and an animated nest badge (323.00 = 20 x 16.15, 'now' goes 0.00 -> 22.00 after a step). Collect works. Vortex fire UI: the first spin lost ('Vortex broke'). Stopwatch: canvas renders during play, stop works, 61fps. Aviator: canvas renders, multiplier rose to 1.41x. Profile: profile-by-game is a sibling after the red banner (not inside it) and lists 7 games, 60fps. Admin: typed 1234 into Min Deposit, and after 10.5s the value and focus were kept while stats/withdrawals/deposits/audit-logs were re-fetched in the background. No page errors anywhere.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "EXTRA_DEFAULTS.stack_config", "issue": "mp_enabled is still True in the code defaults (games_extra.py line 77). Only the live DB was migrated to false, so a fresh DB or deployment would re-enable versus rooms and the bot room loop (_ensure_open_rooms) even though the UI has no Versus tab."},
+      {"endpoint": "POST /api/games/chicken/start", "issue": "ChickenStartReq.mode still defaults to 'easy' (a mode that no longer exists). It falls back to medium, which works, but the default should be 'medium'."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "ChickenQuest lane strip", "issue": "The user asked for 'all multipliers on screen', but at 390px the strip is a horizontal scroller (scrollWidth 1285 vs clientWidth 358), so only ~6 of 22 lanes are visible. It also doesn't auto-scroll to the current or next lane as the chicken advances. Use flex-wrap (a grid of chips) or scrollIntoView on the 'next' chip.", "selector": "[data-testid=chicken-lane-strip]", "priority": "MEDIUM"},
+      {"component": "ChickenQuest nest badge during play (mobile)", "issue": "After Start/GO the page scrolls so the sticky navbar covers the top of chicken-road. The golden nest badge (absolute top-3 right-3) with the live 'now' cash-out value sits under the header and can't be seen during play at 390x844 (seen in the screenshot after step 1).", "selector": "[data-testid=chicken-nest-prize]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Profile per-game cards", "issues": ["'earned' is shown with toFixed(0) (2483, 367), while net is shown with 2 decimals (+422.93, -313.00). The numbers look inconsistent; use the same precision."]},
+      {"screen": "T Mines 3D (mobile)", "issues": ["The floor multiplier labels are small grey text on a dark background (low contrast) but fully visible. During play the active floor sits mid-canvas, with ~170px of empty space below it."]},
+      {"screen": "Tower result (mobile)", "issues": ["After a run ends, the page scroll leaves the top of the result card (and the canvas) under the sticky header."]},
+      {"screen": "Admin console (desktop)", "issues": ["Still open from iteration 11: the header content (logo at x~340 and Sign out) is narrower and offset from the body container (x~288)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter12.py", "/app/backend/tests/test_vortex_chicken_stack.py", "/app/test_reports/pytest/pytest_iter12.xml"],
+  "action_items": [
+    "Chicken: show all lane multipliers without horizontal scrolling (wrap them into a grid), or at least auto-scroll the strip to the next lane.",
+    "Chicken: keep the golden nest badge visible during play on mobile. Avoid scrolling the road under the sticky header, or move the badge below the canvas or into the action panel.",
+    "Set EXTRA_DEFAULTS stack_config.mp_enabled = False and ChickenStartReq.mode default to 'medium'.",
+    "Optional cleanup: remove the dead endless/versus code in TowerStack.js (hidden TABS div, loadRooms, the endless-rules block, the liveMult endless HUD) and the endless branch in stack_finish.",
+    "Optional: use the same precision for 'earned' on the Profile game cards."
+  ],
+  "critical_code_review_comments": [
+    "games_extra.py is 1031 lines (over the 700-line limit). Split it into vortex/chicken/stack/fair modules.",
+    "TowerStack.js still renders a hidden TABS div and keeps the endless/versus branches (the tab state can only be 'timed'). This is dead code.",
+    "The Navbar wallet poll runs every 8s plus on focus, and calls /wallet on each route change. That is fine, but the focus and interval refetches can overlap; consider debouncing.",
+    "Admin silent refresh correctly skips /admin/config and /admin/users, so edits and search are kept (verified)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter12.py (new)", "/app/backend/tests/test_vortex_chicken_stack.py (sprint 15/5x, chicken modes without easy, stack disable test uses challenge_id)"],
+  "success_rate": {"backend": "100% (13/13 new; plus 3 updated legacy tests pass)", "frontend": "92% (all flows work; 2 chicken mobile UX gaps)"},
+  "seed_data_creation": "None. The player balance was reset to 5000 at the end. The admin config was not saved (the typed value was never submitted). The vortex/chicken config was restored after the garbage tests.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run the pytest files from /app/backend/tests (cd into it so the sibling imports resolve) with -n 0. Legacy tests that still fail are now obsolete: test_vortex_chicken_stack.py endless tests, chicken test_rounds_and_verify (easy), TestStackVersus, and test_iter11_fixes.py TestVersusFixes (no open rooms because mp is disabled) plus test_chicken_active_and_forfeit (expects 'easy'). Delete or rewrite them. mongosh is available inside browser_automation scripts via subprocess (pymongo isn't). Guide dismiss key: localStorage timeup_guide_done=1; token key: pazer_token.",
+  "test_credentials": "Player 8800112233 / Test@123; Admin 9999999999 / Admin@123 (from /app/memory/test_credentials.md)"
+}

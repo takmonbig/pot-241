@@ -1030,7 +1030,7 @@ async def aviator_start(body: AviatorStartReq, user: dict = Depends(get_current_
     if u.get("main_balance", 0) + u.get("bonus_balance", 0) < bet:
         raise HTTPException(status_code=400, detail="Insufficient balance for this bet")
     await db.game_sessions.update_many(
-        {"user_id": str(user["_id"]), "mode": "aviator", "status": "active"},
+        {"user_id": str(user["_id"]), "mode": "aviator", "status": "active", "race_id": None},
         {"$set": {"status": "abandoned"}})
     max_mult = ac.get("max_multiplier", 100)
     force_win = bool(u.get("force_win"))
@@ -1081,6 +1081,10 @@ async def aviator_cashout(body: AviatorCashoutReq, user: dict = Depends(get_curr
     won = mult < crash
     prize = round(session["entry_fee"] * mult, 2) if won else 0.0
     cashed = round(mult, 2) if won else 0.0
+    if session.get("race_id"):
+        import race as _race
+        await _race.submit(session, cashed, f"{cashed}×" if won else "Flew away")
+        return {"won": won, "multiplier": cashed, "crash_point": crash, "prize": 0.0, "race": True}
     await db.game_sessions.update_one({"id": session["id"]}, {"$set": {
         "status": "completed", "cashout_mult": cashed, "crash_point": crash,
         "won": won, "prize_awarded": prize, "stopped_at": now_iso()}})
@@ -1131,7 +1135,7 @@ async def tower_start(body: TowerStartReq, user: dict = Depends(get_current_user
     if u.get("main_balance", 0) + u.get("bonus_balance", 0) < bet:
         raise HTTPException(status_code=400, detail="Insufficient balance for this bet")
     await db.game_sessions.update_many(
-        {"user_id": str(user["_id"]), "mode": "tower", "status": "active"},
+        {"user_id": str(user["_id"]), "mode": "tower", "status": "active", "race_id": None},
         {"$set": {"status": "abandoned"}})
     force_win = bool(u.get("force_win"))
     bombs_layout = [sorted(random.sample(range(cols), bombs)) for _ in range(rows)]
@@ -1167,6 +1171,10 @@ async def tower_start(body: TowerStartReq, user: dict = Depends(get_current_user
 async def _settle_tower(session: dict, user: dict, won: bool, cashed_row: int):
     mults = session["multipliers"]
     mult = mults[cashed_row - 1] if won and cashed_row > 0 else 0.0
+    if session.get("race_id"):
+        import race as _race
+        await _race.submit(session, mult, f"{mult}× · floor {cashed_row}" if won else "Hit a mine")
+        return 0.0, round(mult, 2)
     prize = round(session["entry_fee"] * mult, 2) if won else 0.0
     await db.game_sessions.update_one({"id": session["id"]}, {"$set": {
         "status": "completed", "won": won, "prize_awarded": prize,
@@ -2182,6 +2190,8 @@ async def root():
 import games_extra  # noqa: E402  (registers Vortex Spin / Chicken Quest / Tower Stack routes)
 app.include_router(api)
 app.include_router(games_extra.router)
+import race  # noqa: E402  (race mode for all games in 1v1 / rooms / friends)
+app.include_router(race.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -2255,6 +2265,7 @@ async def startup():
         logger.warning(f"stale room cleanup skipped: {e}")
     asyncio.create_task(room_manager_loop())
     asyncio.create_task(games_extra.stack_room_loop())
+    asyncio.create_task(race.race_loop())
     logger.info("TIMEUP API started")
 
 

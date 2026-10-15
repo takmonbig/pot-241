@@ -8,6 +8,8 @@ import { AviatorCanvas } from "@/components/AviatorCanvas";
 import { showPopup } from "@/components/CenterPopup";
 import { showWin } from "@/components/WinCelebration";
 import { fbTrack } from "@/lib/siteConfig";
+import { HowToPlay } from "@/components/HowToPlay";
+import { useRace, RaceBar } from "@/components/Race";
 
 const QUICK = [20, 50, 100, 200, 500];
 const HKEY = "tu_aviator_hist";
@@ -63,6 +65,7 @@ export default function Aviator() {
   const canvas = useRef(null);
   const sess = useRef(null);
   const settled = useRef(false);
+  const race = useRace();
   const autoRef = useRef({ auto, autoX });
   autoRef.current = { auto, autoX };
 
@@ -71,10 +74,10 @@ export default function Aviator() {
   useEffect(() => () => window.dispatchEvent(new CustomEvent("game:active", { detail: false })), []);
 
   const start = async () => {
-    if (bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
+    if (!race.id && bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
     setBusy(true);
     try {
-      const { data } = await api.post("/games/aviator/start", { bet });
+      const { data } = race.id ? await race.play() : await api.post("/games/aviator/start", { bet });
       sess.current = data; settled.current = false;
       setCashed(null); setMult(1); setPhase("flying");
       canvas.current?.fly(data.growth_rate, data.crash_point);
@@ -94,7 +97,8 @@ export default function Aviator() {
     try {
       const { data } = await api.post("/games/aviator/cashout", { session_id: s.session_id, nonce: s.nonce, multiplier: m });
       window.dispatchEvent(new Event("wallet:refresh"));
-      if (data.won) { setCashed(data.multiplier); showWin(data.prize); }
+      if (data.race) { race.finished(); if (data.won) setCashed(data.multiplier); showPopup({ type: data.won ? "success" : "warning", title: data.won ? `Race score: ${data.multiplier}×` : "Flew away", message: "Check the lobby to see how you rank." }); }
+      else if (data.won) { setCashed(data.multiplier); showWin(data.prize); }
       else if (manual) showPopup({ type: "warning", title: "Too late!", message: `The plane flew away at ${data.crash_point.toFixed(2)}x.` });
     } catch (e) { showPopup({ type: "warning", title: "Something went wrong", message: formatApiError(e.response?.data?.detail) }); }
   };
@@ -121,8 +125,9 @@ export default function Aviator() {
         <Link to="/home" data-testid="aviator-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Plane className="h-5 w-5 text-pazer-red" />
         <h1 className="font-display font-bold text-2xl tracking-tight">Aviator</h1>
-        <MuteButton />
+        <HowToPlay k="aviator" /><MuteButton className="!ml-0" />
       </div>
+      <RaceBar race={race} />
       <History list={hist} />
 
       <div className="relative h-72 sm:h-80 rounded-3xl overflow-hidden border border-pazer-red/30 pz-glow-box">
@@ -131,21 +136,21 @@ export default function Aviator() {
       </div>
 
       <div className="mt-5 rounded-3xl pz-glass p-5 space-y-4">
-        <BetControls cfg={cfg} bet={bet} setBet={setBet} disabled={flying} />
+        {!race.id && <BetControls cfg={cfg} bet={bet} setBet={setBet} disabled={flying} />}
         <AutoControls auto={auto} setAuto={setAuto} autoX={autoX} setAutoX={setAutoX} disabled={flying} />
         <AnimatePresence mode="wait">
           {canCash ? (
             <motion.button key="cash" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ opacity: 0 }}
               whileTap={{ scale: 0.96 }} onClick={() => settle(mult, true)} data-testid="aviator-cashout-btn"
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 font-extrabold text-lg shadow-lg shadow-orange-500/40">
-              CASH OUT <span className="font-mono-pz">{(bet * mult).toFixed(2)}</span>
+              CASH OUT <span className="font-mono-pz">{race.id ? `${mult.toFixed(2)}×` : (bet * mult).toFixed(2)}</span>
             </motion.button>
           ) : (
             <motion.button key="bet" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={start} disabled={busy || phase !== "idle"} data-testid="aviator-bet-btn"
+              onClick={start} disabled={busy || phase !== "idle" || (race.id && race.locked)} data-testid="aviator-bet-btn"
               className="w-full py-4 rounded-2xl bg-pazer-red hover:bg-pazer-redhover font-extrabold text-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
               {busy && <Loader2 className="h-5 w-5 animate-spin" />}
-              {phase === "idle" ? `BET ${bet}` : flying ? "Waiting for landing…" : "Next round…"}
+              {phase === "idle" ? (race.id ? (race.locked ? "Race run used" : "Start race run") : `BET ${bet}`) : flying ? "Waiting for landing…" : "Next round…"}
             </motion.button>
           )}
         </AnimatePresence>

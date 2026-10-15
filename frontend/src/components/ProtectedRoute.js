@@ -23,7 +23,7 @@ function AdminHeader() {
   const doLogout = async () => { await logout(); nav("/admin/login", { replace: true }); };
   return (
     <header className="sticky top-0 z-50 bg-[#0a0e17]/90 backdrop-blur border-b border-white/10">
-      <div className="mx-auto max-w-6xl px-4 md:px-8 h-16 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-4 md:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2.5" data-testid="admin-brand">
           <div className="h-9 w-9 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center">
             <ShieldCheck className="h-5 w-5 text-blue-400" />

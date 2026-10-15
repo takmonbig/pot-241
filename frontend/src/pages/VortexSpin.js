@@ -6,7 +6,8 @@ import api, { formatApiError } from "@/lib/api";
 import { showPopup } from "@/components/CenterPopup";
 import { showWin } from "@/components/WinCelebration";
 import { BetBox, apiErrorPopup } from "@/components/BetBox";
-import { FairnessPanel } from "@/components/FairnessPanel";
+import { HowToPlay } from "@/components/HowToPlay";
+import { useRace, RaceBar } from "@/components/Race";
 import { fbTrack } from "@/lib/siteConfig";
 import { Vortex3D } from "@/components/Vortex3D";
 import { MuteButton } from "@/components/MuteButton";
@@ -31,6 +32,9 @@ export default function VortexSpin() {
   const [lastFair, setLastFair] = useState(null);
   const [seedKey, setSeedKey] = useState(0);
   const [partialStage, setPartialStage] = useState(-1);
+  const race = useRace();
+  useEffect(() => { if (race.room?.param) setTheme(race.room.param); }, [race.room?.param]);
+  const winOrRace = (p) => { if (race.id) { race.finished(); showPopup({ type: "success", title: "Race score submitted", message: "Check the lobby to see how you rank." }); } else showWin(p); };
 
   useEffect(() => { api.get("/games/extra/config").then(({ data }) => { setCfg(data.vortex); setBet(data.vortex.min_bet || 20); }).catch(() => {}); }, []);
   const active = game?.status === "active";
@@ -60,13 +64,13 @@ export default function VortexSpin() {
           setShake(true); setTimeout(() => setShake(false), 600);
           setGame((x) => ({ ...x, status: "lost", at_risk: 0 }));
           setLastFair(data.fair); setSeedKey((k) => k + 1);
-          window.dispatchEvent(new Event("wallet:refresh"));
+          window.dispatchEvent(new Event("wallet:refresh")); if (race.id) race.finished();
           setTimeout(() => showPopup({ type: "warning", title: "The vortex broke!", message: data.total_prize > 0 ? `You kept ${data.total_prize} coins from partial collects.` : "Spin again and read the elements." }), 400);
         } else if (data.finished) {
           wheelRef.current?.win();
           setGame((x) => ({ ...x, stage: data.stage, at_risk: 0, status: "won" }));
           setLastFair(data.fair); setSeedKey((k) => k + 1);
-          window.dispatchEvent(new Event("wallet:refresh")); showWin(data.total_prize);
+          window.dispatchEvent(new Event("wallet:refresh")); winOrRace(data.total_prize);
         } else {
           sfx.gem();
           setGame((x) => ({ ...x, stage: data.stage, at_risk: data.at_risk }));
@@ -78,10 +82,10 @@ export default function VortexSpin() {
   };
 
   const startAndSpin = async () => {
-    if (bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
+    if (!race.id && bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
     setBusy(true);
     try {
-      const { data } = await api.post("/games/vortex/start", { bet, theme });
+      const { data } = race.id ? await race.play() : await api.post("/games/vortex/start", { bet, theme });
       const g = { ...data, stage: 0, at_risk: data.entry_fee, collected: 0, status: "active" };
       setGame(g); setWheelStage(0); setLastFair(null); setPartialStage(-1);
       fbTrack("game_play", { value: bet, currency: "INR" });
@@ -98,7 +102,7 @@ export default function VortexSpin() {
       if (data.finished) {
         wheelRef.current?.win(); sfx.coin();
         setGame((x) => ({ ...x, status: "won", at_risk: 0 })); setLastFair(data.fair); setSeedKey((k) => k + 1);
-        showWin(data.total_prize);
+        winOrRace(data.total_prize);
       } else {
         sfx.coin(); setGame((x) => ({ ...x, at_risk: data.at_risk, collected: data.collected })); setPartialStage(game.stage);
         showPopup({ type: "success", title: `+${data.collected_now} coins banked`, message: `${data.at_risk} still riding the vortex.` });
@@ -116,14 +120,15 @@ export default function VortexSpin() {
         <Link to="/home" data-testid="vortex-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Tornado className="h-5 w-5 text-pazer-red" />
         <h1 className="font-display font-bold text-2xl tracking-tight">Vortex Spin</h1>
-        <MuteButton />
+        <HowToPlay k="vortex" /><MuteButton className="!ml-0" />
       </div>
+      <RaceBar race={race} />
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         {Object.keys(THEMES).map((k) => {
           const T = THEMES[k]; const tb = cfg?.tables?.[k];
           return (
-            <button key={k} disabled={active || busy} onClick={() => { setTheme(k); setGame(null); setWheelStage(0); }} data-testid={`vortex-theme-${k}`}
+            <button key={k} disabled={active || busy || !!race.id} onClick={() => { setTheme(k); setGame(null); setWheelStage(0); }} data-testid={`vortex-theme-${k}`}
               className={`relative overflow-hidden py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-50 border ${theme === k ? "border-white/60 scale-[1.02]" : "border-white/10 opacity-80 hover:opacity-100"}`}
               style={{ background: `linear-gradient(160deg, ${T.safe[1]}55, #000)`, boxShadow: theme === k ? `0 0 22px ${T.glow}` : "none" }}>
               <T.icon className="h-5 w-5 mx-auto mb-1" style={{ color: T.accent }} />
@@ -210,7 +215,6 @@ export default function VortexSpin() {
             </button>
           </>
         )}
-        <FairnessPanel game="vortex" param={theme} locked={active} round={active ? game.fair : lastFair} refreshKey={seedKey} />
       </div>
     </div>
   );

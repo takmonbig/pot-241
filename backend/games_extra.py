@@ -74,7 +74,7 @@ EXTRA_DEFAULTS = {
             {"id": "master", "label": "Master", "height": 45, "seconds": 60, "multiplier": 20},
         ],
         # multiplayer
-        "mp_enabled": True,
+        "mp_enabled": False,
         "mp_entry_fees": [50, 100, 200],
         "mp_sizes": [2, 4],
         "mp_platform_fee_percent": 10,
@@ -313,7 +313,7 @@ async def _record_game(user_id: str, mode: str, entry: float, prize: float, won:
 
 async def _forfeit_active(user_id: str, mode: str):
     """A new round replaces an unfinished one: settle the old one as lost (seed revealed, game recorded)."""
-    for s in await S.db.game_sessions.find({"user_id": user_id, "mode": mode, "status": "active"}).to_list(10):
+    for s in await S.db.game_sessions.find({"user_id": user_id, "mode": mode, "status": "active", "race_id": None}).to_list(10):
         res = await S.db.game_sessions.update_one({"id": s["id"], "status": "active"}, {"$set": {"status": "forfeited"}})
         if res.modified_count != 1:
             continue
@@ -403,6 +403,11 @@ async def vortex_start(body: VortexStartReq, user: dict = Depends(S.get_current_
 
 async def _vortex_settle(s: dict, user: dict, final_credit: float, lost: bool):
     total = round(s["collected"] + final_credit, 2)
+    if s.get("race_id"):
+        import race as _race
+        m = round(total / s["entry_fee"], 2)
+        await _race.submit(s, m, f"{m}× · stage {s['stage']}" if not lost else "Vortex broke")
+        return 0.0, None
     await S.db.game_sessions.update_one({"id": s["id"]}, {"$set": {
         "status": "completed", "prize_awarded": total, "lost": lost, "stopped_at": S.now_iso()}})
     rec = await _record_game(
@@ -447,6 +452,8 @@ async def vortex_collect(body: VortexCollectReq, user: dict = Depends(S.get_curr
     s = await _lock_session(body.session_id, body.token, user, "vortex")
     if s["stage"] < 1:
         raise HTTPException(status_code=400, detail="Spin at least once before collecting")
+    if body.partial and s.get("race_id"):
+        raise HTTPException(status_code=400, detail="Partial collect is off in races")
     if not body.partial:
         total, rec = await _vortex_settle(s, user, s["at_risk"], lost=False)
         return {"collected_now": round(s["at_risk"], 2), "finished": True, "total_prize": total,
@@ -467,7 +474,7 @@ async def vortex_collect(body: VortexCollectReq, user: dict = Depends(S.get_curr
 
 @router.get("/games/vortex/active")
 async def vortex_active(user: dict = Depends(S.get_current_user)):
-    s = await S.db.game_sessions.find_one({"user_id": str(user["_id"]), "mode": "vortex", "status": "active"})
+    s = await S.db.game_sessions.find_one({"user_id": str(user["_id"]), "mode": "vortex", "status": "active", "race_id": None})
     if not s:
         return {"active": False}
     return {"active": True, "session_id": s["id"], "token": s["token"], "entry_fee": s["entry_fee"], "theme": s["theme"],
@@ -492,7 +499,7 @@ def chicken_multipliers(cc: dict, mode: str) -> List[float]:
 
 class ChickenStartReq(BaseModel):
     bet: float
-    mode: str = "easy"
+    mode: str = "medium"
 
 
 @router.post("/games/chicken/start")
@@ -528,6 +535,10 @@ async def chicken_start(body: ChickenStartReq, user: dict = Depends(S.get_curren
 
 async def _chicken_settle(s: dict, won: bool, step: int):
     mult = s["multipliers"][step - 1] if won and step > 0 else 0.0
+    if s.get("race_id"):
+        import race as _race
+        await _race.submit(s, mult, f"{mult}× · lane {step}" if won else "Fried")
+        return 0.0, mult, None
     prize = round(s["entry_fee"] * mult, 2) if won else 0.0
     await S.db.game_sessions.update_one({"id": s["id"]}, {"$set": {
         "status": "completed", "won": won, "prize_awarded": prize, "step": step, "stopped_at": S.now_iso()}})
@@ -540,7 +551,7 @@ async def _chicken_settle(s: dict, won: bool, step: int):
 
 @router.get("/games/chicken/active")
 async def chicken_active(user: dict = Depends(S.get_current_user)):
-    s = await S.db.game_sessions.find_one({"user_id": str(user["_id"]), "mode": "chicken", "status": "active"})
+    s = await S.db.game_sessions.find_one({"user_id": str(user["_id"]), "mode": "chicken", "status": "active", "race_id": None})
     if not s:
         return {"active": False}
     return {"active": True, "session_id": s["id"], "token": s["token"], "entry_fee": s["entry_fee"], "mode": s["difficulty"],
@@ -574,7 +585,8 @@ async def chicken_collect(body: TokenReq, user: dict = Depends(S.get_current_use
     if s["step"] < 1:
         raise HTTPException(status_code=400, detail="Take at least one step before collecting")
     prize, mult, rec = await _chicken_settle(s, True, s["step"])
-    return {"won": True, "step": s["step"], "multiplier": mult, "prize": prize, "hazard_step": s["hazard_step"],
+    return {"won": True, "step": s["step"], "multiplier": mult, "prize": prize,
+            "hazard_step": None if s.get("race_id") else s["hazard_step"],
             "fair": fair_public(s["fair"], True), "game": rec, "wallet": await S.get_wallet(user)}
 
 
@@ -692,7 +704,7 @@ async def stack_start(body: StackStartReq, user: dict = Depends(S.get_current_us
     _bet_checks(sc, bet, "stack")
     u = await _load_user_with_balance(user, bet)
     await S.db.game_sessions.update_many({"user_id": str(user["_id"]), "mode": "stack", "status": "active",
-                                          "room_id": None}, {"$set": {"status": "abandoned"}})
+                                          "room_id": None, "race_id": None}, {"$set": {"status": "abandoned"}})
     await S.debit_wallet(u, bet, "game_entry", meta={"mode": "stack", "type": mode})
     session = {
         "id": str(uuid.uuid4()), "user_id": str(user["_id"]), "mode": "stack", "type": mode,
@@ -729,6 +741,11 @@ async def stack_finish(body: StackFinishReq, user: dict = Depends(S.get_current_
     await S.db.game_sessions.update_one({"id": s["id"]}, {"$set": {
         "status": "completed", "result": r, "flagged": flagged, "taps": body.taps[:2000], "stopped_at": S.now_iso()}})
 
+    if s.get("race_id"):
+        import race as _race
+        score, label = _race.stack_score(r, ch)
+        await _race.submit(s, 0.0 if flagged else score, "Flagged" if flagged else label)
+        return {"result": r, "flagged": flagged, "multiplier": 0, "prize": 0, "won": False, "race": True}
     if s.get("room_id"):
         await _mp_submit(s["room_id"], s["user_id"], r)
         room = await S.db.stack_rooms.find_one({"id": s["room_id"]}, {"_id": 0})

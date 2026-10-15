@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Loader2, HandCoins, Footprints, Egg } from "lucide-react";
@@ -6,7 +6,9 @@ import api, { formatApiError } from "@/lib/api";
 import { showPopup } from "@/components/CenterPopup";
 import { showWin } from "@/components/WinCelebration";
 import { BetBox, apiErrorPopup } from "@/components/BetBox";
-import { FairnessPanel } from "@/components/FairnessPanel";
+import { HowToPlay } from "@/components/HowToPlay";
+import { useRace, RaceBar } from "@/components/Race";
+import { NestEggReveal } from "@/components/NestEgg";
 import { fbTrack } from "@/lib/siteConfig";
 import { Chicken3D } from "@/components/Chicken3D";
 import { MuteButton } from "@/components/MuteButton";
@@ -21,6 +23,19 @@ export default function ChickenQuest() {
   const [hazardAt, setHazardAt] = useState(null);
   const [lastFair, setLastFair] = useState(null);
   const [seedKey, setSeedKey] = useState(0);
+  const [egg, setEgg] = useState(null);
+  const roadRef = useRef(null);
+  const race = useRace();
+  useEffect(() => { if (race.room?.param) setMode(race.room.param); }, [race.room?.param]);
+  useEffect(() => {
+    if (!egg) return undefined;
+    const t = setTimeout(() => { const p = egg.prize; setEgg(null); if (p) showWin(p); }, 3600);
+    return () => clearTimeout(t);
+  }, [egg]);
+  const celebrate = (prize, mult, lane) => {
+    if (race.id) { race.finished(); setEgg({ amount: `${mult}×`, sub: `Lane ${lane} · race score submitted` }); return; }
+    setEgg({ amount: `+${prize}`, sub: `${mult}× · lane ${lane}`, prize });
+  };
 
   useEffect(() => { api.get("/games/extra/config").then(({ data }) => { setCfg(data.chicken); setBet(data.chicken.min_bet || 20); }).catch(() => {}); }, []);
   const active = game?.status === "active";
@@ -32,10 +47,11 @@ export default function ChickenQuest() {
   const step = game?.step || 0;
 
   const start = async () => {
-    if (bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
+    if (!race.id && bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
     setBusy(true);
     try {
-      const { data } = await api.post("/games/chicken/start", { bet, mode });
+      const { data } = race.id ? await race.play() : await api.post("/games/chicken/start", { bet, mode });
+      setTimeout(() => roadRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
       setGame({ ...data, step: 0, status: "active" }); setHazardAt(null); setLastFair(null);
       fbTrack("game_play", { value: bet, currency: "INR" });
       window.dispatchEvent(new Event("wallet:refresh"));
@@ -50,11 +66,11 @@ export default function ChickenQuest() {
       const { data } = await api.post("/games/chicken/step", { session_id: game.session_id, token: game.token });
       if (!data.safe) {
         setHazardAt(data.step); setGame((g) => ({ ...g, status: "lost" })); setLastFair(data.fair); setSeedKey((k) => k + 1);
-        window.dispatchEvent(new Event("wallet:refresh"));
+        window.dispatchEvent(new Event("wallet:refresh")); if (race.id) race.finished();
         setTimeout(() => showPopup({ type: "warning", title: "Fried chicken!", message: `A trap was waiting on lane ${data.step}.` }), 650);
       } else if (data.finished) {
         setGame((g) => ({ ...g, step: data.step, status: "won" })); setHazardAt(data.hazard_step); setLastFair(data.fair); setSeedKey((k) => k + 1);
-        window.dispatchEvent(new Event("wallet:refresh")); showWin(data.prize);
+        window.dispatchEvent(new Event("wallet:refresh")); celebrate(data.prize, data.multiplier, data.step);
       } else setGame((g) => ({ ...g, step: data.step }));
     } catch (e) { showPopup({ type: "warning", title: "Something went wrong", message: formatApiError(e.response?.data?.detail) }); }
     finally { setBusy(false); }
@@ -65,7 +81,7 @@ export default function ChickenQuest() {
     try {
       const { data } = await api.post("/games/chicken/collect", { session_id: game.session_id, token: game.token });
       setGame((g) => ({ ...g, status: "won" })); setHazardAt(data.hazard_step); setLastFair(data.fair); setSeedKey((k) => k + 1);
-      window.dispatchEvent(new Event("wallet:refresh")); showWin(data.prize);
+      window.dispatchEvent(new Event("wallet:refresh")); celebrate(data.prize, data.multiplier, data.step);
     } catch (e) { showPopup({ type: "warning", title: "Can't collect", message: formatApiError(e.response?.data?.detail) }); }
     finally { setBusy(false); }
   };
@@ -86,12 +102,13 @@ export default function ChickenQuest() {
         <Link to="/home" data-testid="chicken-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Egg className="h-5 w-5 text-pazer-red" />
         <h1 className="font-display font-bold text-2xl tracking-tight">Chicken Quest</h1>
-        <MuteButton />
+        <HowToPlay k="chicken" /><MuteButton className="!ml-0" />
       </div>
+      <RaceBar race={race} />
 
       <div className="grid grid-cols-3 gap-2 mb-4">
         {MODES.map((k) => (
-          <button key={k} disabled={active || busy} onClick={() => { setMode(k); setGame(null); setHazardAt(null); }} data-testid={`chicken-mode-${k}`}
+          <button key={k} disabled={active || busy || !!race.id} onClick={() => { setMode(k); setGame(null); setHazardAt(null); }} data-testid={`chicken-mode-${k}`}
             className={`py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50 ${mode === k ? (k === "hardcore" ? "bg-gradient-to-r from-red-700 to-pazer-red" : "bg-pazer-red") + " text-white pz-glow-box" : "bg-white/5 text-white/60 hover:bg-white/10"}`}>
             {cfg?.modes?.[k]?.label || k}
             <span className="block text-[10px] font-normal opacity-70">{cfg?.modes?.[k]?.steps} lanes · {Math.round((cfg?.modes?.[k]?.hazard || 0) * 100)}% trap</span>
@@ -99,22 +116,24 @@ export default function ChickenQuest() {
         ))}
       </div>
 
-      <div className={`relative h-[330px] overflow-hidden rounded-3xl border ${hardcore ? "border-pazer-red/50" : "border-white/10"} bg-[radial-gradient(ellipse_at_top,#2a0a10,#050203_70%)]`} data-testid="chicken-road">
+      <div ref={roadRef} className={`relative h-[330px] scroll-mt-20 overflow-hidden rounded-3xl border ${hardcore ? "border-pazer-red/50" : "border-white/10"} bg-[radial-gradient(ellipse_at_top,#2a0a10,#050203_70%)]`} data-testid="chicken-road">
         <Chicken3D mults={mults} step={step} status={game?.status || "idle"} hazardAt={hazardAt} hardcore={hardcore} />
         <div className="sr-only" data-testid="chicken-sprite" />
         <motion.div animate={{ y: [0, -6, 0], scale: [1, 1.05, 1] }} transition={{ duration: 1.6, repeat: Infinity }} data-testid="chicken-nest-prize"
           className="pointer-events-none absolute right-3 top-3 rounded-2xl border border-amber-300/60 bg-black/75 px-3 py-2 text-right shadow-[0_0_20px_rgba(251,191,36,.35)]">
           <div className="text-[10px] uppercase tracking-widest text-amber-200">🥚 Golden nest</div>
-          <div className="font-mono-pz text-lg font-extrabold text-amber-300">{((game?.entry_fee || bet) * (mults[steps - 1] || 0)).toFixed(2)}</div>
+          <div className="font-mono-pz text-lg font-extrabold text-amber-300">{race.id ? `${mults[steps - 1] || 0}×` : ((game?.entry_fee || bet) * (mults[steps - 1] || 0)).toFixed(2)}</div>
           <div className="text-[10px] text-white/70">{mults[steps - 1]}× · now <b className="text-white">{step > 0 ? ((game?.entry_fee || bet) * mults[step - 1]).toFixed(2) : "0.00"}</b></div>
         </motion.div>
+        <NestEggReveal show={!!egg} amount={egg?.amount} sub={egg?.sub} />
+        {egg && <button className="absolute inset-0 z-30" aria-label="Close" data-testid="chicken-nest-close" onClick={() => { const p = egg.prize; setEgg(null); if (p) showWin(p); }} />}
       </div>
-      <div className="mt-2 flex gap-1.5 overflow-x-auto no-scrollbar pb-1" data-testid="chicken-lane-strip">
+      <div className="mt-2 grid grid-cols-6 sm:grid-cols-8 gap-1.5" data-testid="chicken-lane-strip">
         {mults.map((m, i) => {
           const st = laneState(i);
           return (
             <div key={i} data-testid={`chicken-lane-${i + 1}`}
-              className={`shrink-0 rounded-lg px-2 py-1 font-mono-pz text-[11px] font-bold border ${st === "hazard" ? "bg-pazer-red/40 border-pazer-red" : st === "passed" ? "bg-amber-400/25 border-amber-300 text-amber-100" : st === "next" ? "bg-white/15 border-white" : "bg-white/5 border-white/10 text-white/70"}`}>
+              className={`rounded-lg px-1 py-1 text-center font-mono-pz text-[11px] font-bold border ${st === "hazard" ? "bg-pazer-red/40 border-pazer-red" : st === "passed" ? "bg-amber-400/25 border-amber-300 text-amber-100" : st === "next" ? "bg-white/15 border-white" : "bg-white/5 border-white/10 text-white/70"}`}>
               {st === "hazard" ? "🔥" : `${m}×`}
             </div>
           );
@@ -146,17 +165,18 @@ export default function ChickenQuest() {
                 {game.status === "won" ? `Collected at lane ${step}${hazardAt ? ` · trap was on lane ${hazardAt}` : " · path was clear!"}` : `Fried on lane ${hazardAt}`}
               </div>
             )}
-            <BetBox bet={bet} setBet={setBet} min={cfg?.min_bet || 20} prefix="chicken" disabled={busy} />
-            <div className="flex justify-between text-sm text-white/50">
-              <span>Golden nest prize</span><span className="font-mono-pz text-green-400 font-bold" data-testid="chicken-top-prize">{(bet * (mults[steps - 1] || 0)).toFixed(2)}</span>
-            </div>
-            <button onClick={start} disabled={busy} data-testid="chicken-start-btn"
+            {!race.id && <>
+              <BetBox bet={bet} setBet={setBet} min={cfg?.min_bet || 20} prefix="chicken" disabled={busy} />
+              <div className="flex justify-between text-sm text-white/50">
+                <span>Golden nest prize</span><span className="font-mono-pz text-green-400 font-bold" data-testid="chicken-top-prize">{(bet * (mults[steps - 1] || 0)).toFixed(2)}</span>
+              </div>
+            </>}
+            <button onClick={start} disabled={busy || (race.id && race.locked)} data-testid="chicken-start-btn"
               className="w-full py-4 rounded-2xl bg-pazer-red hover:bg-pazer-redhover font-extrabold text-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-              {busy && <Loader2 className="h-5 w-5 animate-spin" />} {game ? "Play Again" : "Start Quest"} · {bet}
+              {busy && <Loader2 className="h-5 w-5 animate-spin" />} {race.id ? (race.locked ? "Race run used" : "Start race run") : `${game ? "Play Again" : "Start Quest"} · ${bet}`}
             </button>
           </>
         )}
-        <FairnessPanel game="chicken" param={mode} locked={active} round={active ? game.fair : lastFair} refreshKey={seedKey} />
       </div>
     </div>
   );

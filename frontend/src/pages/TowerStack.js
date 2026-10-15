@@ -11,6 +11,8 @@ import { initialState, offsetAt, placeBlock, endlessMultiplier } from "@/lib/sta
 import { fbTrack } from "@/lib/siteConfig";
 import { MuteButton } from "@/components/MuteButton";
 import { sfx } from "@/lib/sfx";
+import { HowToPlay } from "@/components/HowToPlay";
+import { useRace, RaceBar } from "@/components/Race";
 
 const TABS = [{ id: "timed", label: "Timed Challenges", icon: Timer }];
 
@@ -28,6 +30,10 @@ export default function TowerStack() {
   const [busy, setBusy] = useState(false);
   const sceneRef = useRef(null);
   const run = useRef(null);
+  const playRef = useRef(null);
+  const race = useRace();
+  const raceRef = useRef(race);
+  raceRef.current = race;
 
   useEffect(() => { api.get("/games/extra/config").then(({ data }) => { setCfg(data.stack); setBet(data.stack.min_bet || 20); }).catch(() => {}); }, []);
   const playing = phase === "playing";
@@ -59,9 +65,11 @@ export default function TowerStack() {
     setPhase("submitting"); setTimeLeft(null);
     try {
       const { data } = await api.post("/games/stack/finish", { session_id: r.session.session_id, token: r.session.token, taps: r.taps });
-      setResult({ ...data, kind: r.kind, challenge: r.session.challenge });
+      setResult({ ...data, kind: data.race ? "mp" : r.kind, challenge: r.session.challenge });
       window.dispatchEvent(new Event("wallet:refresh"));
-      if (data.won && data.prize > 0) showWin(data.prize); else if (!data.won) sfx.lose();
+      setTimeout(() => playRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      if (data.race) raceRef.current.finished();
+      else if (data.won && data.prize > 0) showWin(data.prize); else if (!data.won) sfx.lose();
       if (r.kind === "mp") loadRooms();
     } catch (e) { showPopup({ type: "warning", title: "Couldn't submit run", message: formatApiError(e.response?.data?.detail) }); }
     finally { setPhase("done"); }
@@ -124,11 +132,12 @@ export default function TowerStack() {
   }, [playing, finishRun]);
 
   const startSolo = async () => {
-    if (bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
+    if (!race.id && bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
     setBusy(true);
     try {
       const body = tab === "timed" ? { bet, mode: "timed", challenge_id: challengeId } : { bet, mode: "endless" };
-      const { data } = await api.post("/games/stack/start", body);
+      const { data } = race.id ? await race.play() : await api.post("/games/stack/start", body);
+      setTimeout(() => playRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
       fbTrack("game_play", { value: bet, currency: "INR" });
       window.dispatchEvent(new Event("wallet:refresh"));
       beginRun(data, tab);
@@ -159,9 +168,10 @@ export default function TowerStack() {
       <div className="flex items-center gap-3 mb-4">
         <Link to="/home" data-testid="stack-back" className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center"><ArrowLeft className="h-4 w-4" /></Link>
         <Layers className="h-5 w-5 text-pazer-red" />
-        <h1 className="font-display font-bold text-2xl tracking-tight">Tower</h1>
-        <MuteButton /><span className="rounded-full bg-emerald-500/15 text-emerald-300 text-[11px] px-2.5 py-1 font-semibold">Skill game</span>
+        <h1 className="font-display font-bold text-2xl tracking-tight">Tower</h1><span className="hidden sm:inline rounded-full bg-emerald-500/15 text-emerald-300 text-[11px] px-2.5 py-1 font-semibold">Skill game</span>
+        <HowToPlay k="stack" /><MuteButton className="!ml-0" />
       </div>
+      <RaceBar race={race} />
 
       <div className="hidden">
         {TABS.map((t) => (
@@ -172,7 +182,7 @@ export default function TowerStack() {
         ))}
       </div>
 
-      <div className="relative h-[460px] overflow-hidden rounded-3xl border border-pazer-red/25 bg-[radial-gradient(ellipse_at_top,#3a0a12,#0a0306_60%,#000)] select-none touch-none"
+      <div ref={playRef} className="relative h-[460px] scroll-mt-20 overflow-hidden rounded-3xl border border-pazer-red/25 bg-[radial-gradient(ellipse_at_top,#3a0a12,#0a0306_60%,#000)] select-none touch-none"
         onPointerDown={(e) => { if (run.current?.running) { e.preventDefault(); tap(); } }} data-testid="stack-play-area">
         <StackScene ref={sceneRef} onFrame={onFrame} className="absolute inset-0" />
         <div className="pointer-events-none absolute inset-x-0 top-0 p-4 flex items-start justify-between">
@@ -213,7 +223,7 @@ export default function TowerStack() {
 
       {!playing && phase !== "submitting" && tab !== "versus" && (
         <div className="mt-5 rounded-3xl pz-glass p-5 space-y-4">
-          {tab === "timed" && (
+          {tab === "timed" && !race.id && (
             <div className="grid grid-cols-3 gap-2">
               {challenges.map((c) => (
                 <button key={c.id} onClick={() => setChallengeId(c.id)} data-testid={`stack-challenge-${c.id}`}
@@ -231,13 +241,14 @@ export default function TowerStack() {
               Height 15 ≈ <span className="font-mono-pz text-amber-300">{endlessMultiplier(cfg, 15, 0)}×</span>, 25 ≈ <span className="font-mono-pz text-amber-300">{endlessMultiplier(cfg, 25, 0)}×</span>, 40 ≈ <span className="font-mono-pz text-amber-300">{endlessMultiplier(cfg, 40, 0)}×</span>.
             </div>
           )}
-          <BetBox bet={bet} setBet={setBet} min={cfg?.min_bet || 20} prefix="stack" disabled={busy} />
-          {tab === "timed" && ch && (
+          {!race.id && <BetBox bet={bet} setBet={setBet} min={cfg?.min_bet || 20} prefix="stack" disabled={busy} />}
+          {race.id && <div className="text-sm text-white/60" data-testid="stack-race-rules">Race: build as high as you can in the challenge time. Reaching the target faster ranks higher.</div>}
+          {tab === "timed" && ch && !race.id && (
             <div className="flex justify-between text-sm text-white/50"><span>Win if you reach {ch.height} in {ch.seconds}s</span><span className="font-mono-pz text-green-400 font-bold">{(bet * ch.multiplier).toFixed(2)}</span></div>
           )}
-          <button onClick={startSolo} disabled={busy} data-testid="stack-start-btn"
+          <button onClick={startSolo} disabled={busy || (race.id && race.locked)} data-testid="stack-start-btn"
             className="w-full py-4 rounded-2xl bg-pazer-red hover:bg-pazer-redhover font-extrabold text-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-            {busy && <Loader2 className="h-5 w-5 animate-spin" />} {result ? "Play Again" : "Start Stacking"} · {bet}
+            {busy && <Loader2 className="h-5 w-5 animate-spin" />} {race.id ? (race.locked ? "Race run used" : "Start race run") : `${result ? "Play Again" : "Start Stacking"} · ${bet}`}
           </button>
         </div>
       )}

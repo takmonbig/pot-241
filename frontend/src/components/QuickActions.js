@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { LoopVideo } from "@/components/LoopVideo";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Users, Swords, Gift, Loader2, Copy, Share2, Check } from "lucide-react";
@@ -6,6 +7,7 @@ import api, { formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { showPopup } from "@/components/CenterPopup";
+import { GAME_META, MODE_META, ALL_GAMES } from "@/lib/games";
 
 export function QuickActions() {
   const [custom, setCustom] = useState(false);
@@ -47,6 +49,7 @@ function CustomRoomModal({ open, onClose }) {
   const nav = useNavigate();
   const [tab, setTab] = useState("create");
   const [mode, setMode] = useState("1v1");
+  const [game, setGame] = useState("stopwatch");
   const [target, setTarget] = useState(10);
   const [fee, setFee] = useState(50);
   const [code, setCode] = useState("");
@@ -57,10 +60,12 @@ function CustomRoomModal({ open, onClose }) {
     if (fee < minFee) return showPopup({ type: "warning", title: "Entry too low", message: `Minimum entry for custom ${mode} is ${minFee} coins.` });
     setBusy(true);
     try {
-      const { data } = await api.post("/rooms/custom", { mode, target: Number(target), entry_fee: Number(fee) });
+      const { data } = game === "stopwatch"
+        ? await api.post("/rooms/custom", { mode, target: Number(target), entry_fee: Number(fee) })
+        : await api.post("/race/custom", { game, group: mode !== "1v1", entry_fee: Number(fee) });
       window.dispatchEvent(new Event("wallet:refresh"));
       onClose();
-      nav(`/room/${data.id}`);
+      nav(game === "stopwatch" ? `/room/${data.id}` : `/race/${data.id}`);
     } catch (e) {
       const detail = formatApiError(e.response?.data?.detail);
       if (/insufficient/i.test(detail)) showPopup({ type: "wallet", title: "Insufficient balance", message: "Add coins to create this room." });
@@ -72,10 +77,11 @@ function CustomRoomModal({ open, onClose }) {
     if (!code.trim()) return;
     setBusy(true);
     try {
-      const { data } = await api.post("/rooms/join-code", { code: code.trim() });
+      const isRace = code.trim().toUpperCase().startsWith("RF");
+      const { data } = await api.post(isRace ? "/race/join-code" : "/rooms/join-code", { code: code.trim() });
       window.dispatchEvent(new Event("wallet:refresh"));
       onClose();
-      nav(`/room/${data.id}`);
+      nav(isRace ? `/race/${data.id}` : `/room/${data.id}`);
     } catch (e) {
       const detail = formatApiError(e.response?.data?.detail);
       if (/insufficient/i.test(detail)) showPopup({ type: "wallet", title: "Insufficient balance", message: "Add coins to join this room." });
@@ -85,8 +91,15 @@ function CustomRoomModal({ open, onClose }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="bg-pazer-card border-white/10 text-white">
+      <DialogContent className="bg-pazer-card border-white/10 text-white max-h-[92vh] overflow-y-auto">
         <DialogHeader><DialogTitle className="font-display flex items-center gap-2"><Users className="h-5 w-5 text-pazer-red" />Play with Friends</DialogTitle></DialogHeader>
+        <div className="relative h-28 overflow-hidden rounded-2xl" data-testid="friends-demo">
+          <LoopVideo k={"friends"} className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
+          <ol className="relative p-3 space-y-1 text-[11px] text-white/85 max-w-[70%]">
+            {MODE_META.friends.steps.map((t, i) => <li key={i}><b className="text-pazer-red">{i + 1}.</b> {t}</li>)}
+          </ol>
+        </div>
         <div className="flex gap-2 mb-2">
           {["create", "join"].map((t) => (
             <button key={t} data-testid={`custom-tab-${t}`} onClick={() => setTab(t)}
@@ -109,8 +122,23 @@ function CustomRoomModal({ open, onClose }) {
                 ))}
               </div>
             </div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-white/50 mb-2">Game</div>
+              <div className="grid grid-cols-3 gap-2">
+                {ALL_GAMES.map((k) => {
+                  const g = GAME_META[k];
+                  return (
+                    <button key={k} data-testid={`custom-game-${k}`} onClick={() => setGame(k)}
+                      className={`py-2 rounded-xl text-[11px] font-bold flex flex-col items-center gap-1 border transition-colors ${game === k ? "text-black" : "bg-white/5 text-white/70 border-white/10"}`}
+                      style={game === k ? { background: g.color, borderColor: g.color } : undefined}>
+                      <g.icon className="h-4 w-4" />{g.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
+              <div className={game === "stopwatch" ? "" : "hidden"}>
                 <div className="text-xs uppercase tracking-wider text-white/50 mb-1">Target (s)</div>
                 <input data-testid="custom-target" type="number" min={3} max={60} value={target} onChange={(e) => setTarget(e.target.value)}
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 font-mono-pz focus:border-pazer-red outline-none" />
@@ -121,7 +149,7 @@ function CustomRoomModal({ open, onClose }) {
                   className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 font-mono-pz focus:border-pazer-red outline-none" />
               </div>
             </div>
-            <p className="text-xs text-white/40">Room stays open 10 minutes. Share the code with friends, then start the match yourself.</p>
+            <p className="text-xs text-white/40">Room stays open 10 minutes. Share the code with friends, then start the match yourself.{game !== "stopwatch" && ` ${GAME_META[game].race}`}</p>
             <button onClick={create} disabled={busy} data-testid="create-custom-btn"
               className="w-full py-3 rounded-full bg-pazer-red hover:bg-pazer-redhover font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
               {busy && <Loader2 className="h-4 w-4 animate-spin" />} Create &amp; Pay {fee}

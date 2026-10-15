@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { LoopVideo } from "@/components/LoopVideo";
 import { motion } from "framer-motion";
 import { Timer, Plane, Gem, ChevronRight, Gamepad2, Tornado, Egg, Layers, Star } from "lucide-react";
 import { DailyReward } from "@/components/DailyReward";
@@ -38,7 +39,8 @@ function GameCard({ g, i }) {
       <Link to={g.to} data-testid={`hub-card-${g.id}`}
         className={`group relative block overflow-hidden rounded-3xl border-2 ${g.wide ? "h-48" : "h-60"}`}
         style={{ borderColor: g.color, boxShadow: `0 0 22px ${g.color}55, inset 0 0 24px ${g.color}22` }}>
-        <img src={g.img} alt={g.t1 + g.t2} className={`hub-anim-img absolute inset-0 h-full w-full object-cover ${g.wide ? "object-right" : "object-center"}`} style={{ animationDelay: `${-i * 1.3}s` }} />
+        <LoopVideo k={g.id} poster={g.img} preload="auto" data-testid={`hub-video-${g.id}`}
+          className={`absolute inset-0 h-full w-full object-cover ${g.wide ? "object-right" : "object-center"}`} />
         <div className={`absolute inset-0 ${g.wide ? "bg-gradient-to-r from-black via-black/70 to-transparent" : "bg-gradient-to-t from-black via-black/60 to-transparent"}`} />
         <div className="hub-sweep pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent" style={{ animationDelay: `${i * 0.6}s` }} />
         <Sparks color={g.color} />
