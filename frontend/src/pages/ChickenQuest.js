@@ -123,7 +123,7 @@ export default function ChickenQuest() {
           className="pointer-events-none absolute right-3 top-3 rounded-2xl border border-amber-300/60 bg-black/75 px-3 py-2 text-right shadow-[0_0_20px_rgba(251,191,36,.35)]">
           <div className="text-[10px] uppercase tracking-widest text-amber-200">🥚 Golden nest</div>
           <div className="font-mono-pz text-lg font-extrabold text-amber-300">{race.id ? `${mults[steps - 1] || 0}×` : ((game?.entry_fee || bet) * (mults[steps - 1] || 0)).toFixed(2)}</div>
-          <div className="text-[10px] text-white/70">{mults[steps - 1]}× · now <b className="text-white">{step > 0 ? ((game?.entry_fee || bet) * mults[step - 1]).toFixed(2) : "0.00"}</b></div>
+          <div className="text-[10px] text-white/70">{mults[steps - 1]}× · now <b className="text-white">{step > 0 ? (race.id ? `${mults[step - 1]}×` : ((game?.entry_fee || bet) * mults[step - 1]).toFixed(2)) : (race.id ? "0×" : "0.00")}</b></div>
         </motion.div>
         <NestEggReveal show={!!egg} amount={egg?.amount} sub={egg?.sub} />
         {egg && <button className="absolute inset-0 z-30" aria-label="Close" data-testid="chicken-nest-close" onClick={() => { const p = egg.prize; setEgg(null); if (p) showWin(p); }} />}

@@ -95,7 +95,7 @@ function RaceList({ game, kind }) {
             <div className="space-y-4">
               <div className="space-y-2 bg-black/40 rounded-xl p-4 text-sm">
                 <div className="flex justify-between"><span className="text-white/50">Entry fee</span><span className="font-mono-pz">{confirm.entry_fee} coins</span></div>
-                <div className="flex justify-between"><span className="text-white/50">{confirm.is_1v1 ? "Winner gets" : "Prize pool"}</span><span className="font-mono-pz text-green-400">{confirm.prize}</span></div>
+                <div className="flex justify-between"><span className="text-white/50">{confirm.is_1v1 ? "Winner gets" : "Prize pool"}</span><span className="font-mono-pz text-green-400">{confirm.is_1v1 || confirm.prize > 0 ? confirm.prize : `up to ${Math.round(confirm.entry_fee * confirm.max_players * 0.9)}`}</span></div>
               </div>
               <p className="text-xs text-white/40">The race starts when the room fills. You get one run. If nobody scores or too few players join, your entry is refunded.</p>
               <button onClick={join} disabled={busy} data-testid="race-confirm-join"

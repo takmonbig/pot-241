@@ -263,7 +263,7 @@ export default function TowerStack() {
 function ResultCard({ result }) {
   const r = result.result || {};
   let title, tone;
-  if (result.kind === "mp") { title = `Tower submitted · ${r.height} blocks`; tone = "text-white"; }
+  if (result.kind === "mp") { title = `Tower submitted · ${r.height} block${r.height === 1 ? "" : "s"}`; tone = "text-white"; }
   else if (result.kind === "timed") { title = result.won ? "Challenge complete!" : "Challenge failed"; tone = result.won ? "text-emerald-300" : "text-pazer-red"; }
   else if (result.won) { title = `${result.multiplier}× tower!`; tone = "text-emerald-300"; }
   else { title = result.prize > 0 ? `Tower toppled · ${result.multiplier}× back` : "Tower toppled"; tone = result.prize > 0 ? "text-amber-300" : "text-pazer-red"; }

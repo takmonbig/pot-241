@@ -1,0 +1,53 @@
+{
+  "summary": "Retest of the iteration_13 race fixes. Backend: 24 pytest cases (new test_iter14_race_fixes.py plus the updated test_race_mode.py). 23 passed and 1 failed. The failure is a real exploit: in an aviator race you can cash out late, after the crash, once /games/aviator/status has revealed the crash point. Frontend at 390x844: Fixes 1, 2, 4, 6 and 7 verified in the UI. Full friends-room chicken flow passes with two browser contexts (create from the modal, join by code, host starts, both play, COMPLETED with ranks). Stack race run submits. Hub videos play, the first-time HowToPlay popups (category and game) show once, and the nest-egg reveal works. Code review found a Tower race UI bug: since bombs_layout is now null in races, the tile that hit a mine renders as a gem.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/games/aviator/cashout (race sessions)", "issue": "Cashout does not check whether the server-side flight has already passed the crash point. won = min(claimed, server_mult) < crash, so a late claim just below the crash is still accepted. Reproduced: crash 2.68, status returned {crashed:true, crash_point:2.68}, then a cashout with multiplier 2.67 returned won:true and race score 2.67. In a race this gives a near-maximum score every time and defeats Fix 4. The same check is missing for solo play, but solo already sends crash_point to the client.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/games/aviator/status and cashout", "issue": "After a race player cashes out, both endpoints return the real crash_point while the race is still LIVE. A friend who has not played yet could be told the crash point (collusion risk). Consider hiding crash_point in race responses until the race is COMPLETED."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Tower3D / Tower.js race", "issue": "In a race, pick returns bombs_layout:null on a mine hit. Tower.js calls setBombs(null), and Tower3D then gives the picked tile state 'gem' (green tile, gem sfx) and marks the row as passed, even though the run was lost. Fix: on !data.safe, setBombs(data.bombs_layout || {[r]: [col]}).", "selector": "[data-testid=aviator-canvas]-like 3D tower canvas", "priority": "MEDIUM"},
+      {"component": "Tower.js race loss popup", "issue": "In a race the popup still says 'Play again and climb higher.' even though the race allows only one run.", "selector": "popup", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Vortex race (active)", "issues": ["The Riding and Banked stats show coin values (e.g. 72.00) in race mode, where scores are multipliers."]},
+      {"screen": "Chicken race", "issues": ["The golden nest chip shows '16.15× · now 55.00', which is a coin value, during a race."]},
+      {"screen": "Rooms join confirm dialog (ModeLobby)", "issues": ["For a 0-player room the confirm dialog shows 'Prize pool 0'. The card fix shows 'pool up to 360', but the dialog was not updated. The /race/:id header also shows 'PRIZE POOL 0' for an empty room."]},
+      {"screen": "Stack race result", "issues": ["Says '1 blocks' (should be singular)."]},
+      {"screen": "Race result row", "issues": ["The winner username is truncated ('TUC43BA...') while the label wraps onto 2 lines at 390px."]}
+    ]
+  },
+  "verified_fixes": {
+    "fix1_vortex_race": "PASS: no BetBox or max-win row, 'Start race run' then disabled 'Race run used', no partial button, collect shows '1.44×'",
+    "fix2_chicken_race": "PASS: 'Collected at lane 1 · race score submitted', nest egg reveal shows '1.1×'",
+    "fix3_join_debit": "PASS: debit happens once; double join gives 409 with no extra debit; joining a full room gives 409 with the balance unchanged",
+    "fix4_aviator_race": "PARTIAL: play returns crash_point null; status returns {crashed:false, crash_point:null} while flying; the UI plane crashes when status reports a crash; the 'Race score: 1.06×' popup shows; solo still returns crash_point. Exploit: late cashout after the crash is accepted (see backend critical).",
+    "fix5_tower_mask": "PASS (backend): race pick and cashout return bombs_layout null; solo returns the list. A UI side effect is listed under ui_bugs.",
+    "fix6_layout": "PASS: friends-demo shows all 3 steps inside the box (ol 122.75px tall in a 136px box); the Help pill shows 'Help' at 75x30 without wrapping",
+    "fix7_labels": "PASS: rooms cards show 'pool up to 360/720', 1v1 cards show 'winner gets'; /race/:id shows 'PRIZE POOL' for rooms and 'WINNER TAKES' for friends 1v1"
+  },
+  "test_report_links": ["/app/backend/tests/test_iter14_race_fixes.py", "/app/backend/tests/test_race_mode.py", "/app/test_reports/pytest/iter14.xml"],
+  "action_items": [
+    "server.py aviator_cashout: compute the server multiplier without LATENCY_BOUND (or with a small grace). If exp(k*elapsed) >= crash_point - grace, treat the cashout as lost. Apply this at least for race sessions, and ideally for solo too.",
+    "Hide crash_point in race cashout and status responses until the race is COMPLETED (optional hardening).",
+    "Tower.js: when a race pick is not safe, set bombs to {[row]: [col]} (or have the backend return only the hit row) so the mine renders as a bomb, not a gem. Change the race loss popup text.",
+    "ModeLobby confirm dialog and RaceRoom header: for an empty rooms race, show 'pool up to N' instead of 0.",
+    "Minor: race-mode Vortex stats and the Chicken nest chip show coin values; stack result says '1 blocks'."
+  ],
+  "critical_code_review_comments": [
+    "race_join: the debit-then-push with refund on failure is correct. Concurrent double-joins by the same user each debit, and the loser is refunded, so there is no net loss.",
+    "aviator_status reuses AviatorCashoutReq (multiplier is required but unused). A dedicated model would be cleaner.",
+    "Aviator race: if the tab is closed mid-flight, the session stays 'active' until the 180s live deadline force-finalizes it as 'Did not play'. Acceptable, but status could submit 0 when it detects a crash."
+  ],
+  "updated_files": ["/app/backend/tests/test_race_mode.py (aviator test now reads crash_point from the DB because it is hidden in races)", "/app/backend/tests/test_iter14_race_fixes.py (new)"],
+  "success_rate": {"backend": "96% (23/24)", "frontend": "~90% (all requested flows pass; the tower race mine rendering bug was found in code review)"},
+  "seed_data_creation": "Several friends race rooms were created for P1/P2 via race_seed_helper.py and the UI. Balances were reset to 20000 by the pytest fixtures.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: cd /app/backend/tests && export REACT_APP_BACKEND_URL=... MONGO_URL/DB_NAME from backend/.env && pytest test_iter14_race_fixes.py test_race_mode.py -n 0 (about 65s). test_iter14::TestAviatorRace::test_race_hidden_crash_and_status checks the late-cashout exploit and should pass once it is fixed. For the UI, set localStorage pazer_token, timeup_guide_done=1 and tu_demo_seen_<k>=1. Use a separate browser context for P2. The Tower race mine rendering was not tested in the UI (3D canvas picks); verify by code or by clicking the canvas."
+}

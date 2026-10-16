@@ -179,8 +179,8 @@ export default function VortexSpin() {
         {active ? (
           <>
             <div className="grid grid-cols-3 gap-2 text-center">
-              <Stat label="Riding" value={game.at_risk?.toFixed(2)} testid="vortex-at-risk" color="text-white" />
-              <Stat label="Banked" value={(game.collected || 0).toFixed(2)} testid="vortex-collected" color="text-emerald-300" />
+              <Stat label={race.id ? "Score" : "Riding"} value={race.id ? `${curMult}×` : game.at_risk?.toFixed(2)} testid="vortex-at-risk" color="text-white" />
+              <Stat label={race.id ? "Stage" : "Banked"} value={race.id ? `${game.stage}/${stages.length}` : (game.collected || 0).toFixed(2)} testid="vortex-collected" color="text-emerald-300" />
               <Stat label="Next spin" value={nextStage ? `×${nextStage.step_multiplier.toFixed(2)}` : "-"} color="text-amber-300" />
             </div>
             <button onClick={() => doSpin(game)} disabled={busy || spinning} data-testid="vortex-spin-btn"

@@ -1078,13 +1078,15 @@ async def aviator_cashout(body: AviatorCashoutReq, user: dict = Depends(get_curr
     crash = session["crash_point"]
     mult = min(claimed, round(server_mult, 2))
     mult = max(1.00, mult)
-    won = mult < crash
+    # plane already gone before the click could have happened (0.6s network grace) -> late claim loses
+    already_crashed = math.exp(k * max(0.0, server_elapsed - 0.6)) >= crash
+    won = mult < crash and not already_crashed
     prize = round(session["entry_fee"] * mult, 2) if won else 0.0
     cashed = round(mult, 2) if won else 0.0
     if session.get("race_id"):
         import race as _race
         await _race.submit(session, cashed, f"{cashed}×" if won else "Flew away")
-        return {"won": won, "multiplier": cashed, "crash_point": crash, "prize": 0.0, "race": True}
+        return {"won": won, "multiplier": cashed, "crash_point": None, "prize": 0.0, "race": True}
     await db.game_sessions.update_one({"id": session["id"]}, {"$set": {
         "status": "completed", "cashout_mult": cashed, "crash_point": crash,
         "won": won, "prize_awarded": prize, "stopped_at": now_iso()}})
@@ -1124,7 +1126,8 @@ async def aviator_status(body: AviatorCashoutReq, user: dict = Depends(get_curre
     import math
     elapsed = datetime.now(timezone.utc).timestamp() - session["server_start"]
     crashed = session["status"] != "active" or math.exp(session.get("growth_rate", 0.12) * elapsed) >= session["crash_point"]
-    return {"crashed": crashed, "crash_point": session["crash_point"] if crashed else None}
+    hide = session.get("race_id") and session["status"] != "active"
+    return {"crashed": crashed, "crash_point": session["crash_point"] if crashed and not hide else None}
 
 
 @api.post("/games/tower/start")

@@ -101,11 +101,13 @@ class TestPublic1v1:
         assert j2.json()["status"] == "LIVE"
         a = s1.post(f"{API}/race/{room['id']}/play").json()
         b = s2.post(f"{API}/race/{room['id']}/play").json()
-        assert a["crash_point"] == b["crash_point"]
+        # iter14: crash_point is hidden in race sessions; compare via the DB sessions instead
+        assert a["crash_point"] is None and b["crash_point"] is None
+        assert sess(mdb, a["session_id"])["crash_point"] == sess(mdb, b["session_id"])["crash_point"]
         assert s1.post(f"{API}/race/{room['id']}/play").status_code == 409  # once per player
         assert bal(mdb, P1[0]) == b1 - 50  # play does not debit
         time.sleep(1.5)
-        crash = a["crash_point"]
+        crash = sess(mdb, a["session_id"])["crash_point"]
         m1 = max(1.0, round(min(crash - 0.01, 1.1), 2))
         c1 = s1.post(f"{API}/games/aviator/cashout", json={"session_id": a["session_id"], "nonce": a["nonce"], "multiplier": m1}).json()
         assert c1.get("race") is True and c1["prize"] == 0.0

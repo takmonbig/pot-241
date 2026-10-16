@@ -25,8 +25,8 @@ function PlayerRow({ p, done, i }) {
       className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${p.is_you ? "bg-pazer-red/15 border border-pazer-red/40" : "bg-white/5"}`}>
       <span className="w-6 font-mono-pz text-sm text-white/50">{done ? `#${p.rank}` : i + 1}</span>
       {done && p.rank === 1 && <Crown className="h-4 w-4 text-amber-300" />}
-      <span className="font-semibold truncate">{p.username}{p.is_you && <span className="text-white/40"> (you)</span>}</span>
-      <span className="ml-auto text-xs text-white/60 font-mono-pz">{p.label || (p.played ? "Played ✓" : "Waiting…")}</span>
+      <span className="font-semibold truncate min-w-0 flex-1">{p.username}{p.is_you && <span className="text-white/40"> (you)</span>}</span>
+      <span className="shrink-0 text-right text-xs text-white/60 font-mono-pz whitespace-nowrap">{p.label || (p.played ? "Played ✓" : "Waiting…")}</span>
       {done && p.prize > 0 && <span className="font-mono-pz text-sm font-bold text-green-400">+{p.prize}</span>}
     </motion.div>
   );
@@ -83,7 +83,7 @@ export default function RaceRoom() {
           <span className="self-start rounded-full bg-pazer-red px-3 py-1 text-[11px] font-extrabold uppercase" data-testid="race-kind">{KIND_LABEL[r.kind]}</span>
           <div>
             <div className="text-xs uppercase tracking-widest text-white/60">{r.is_1v1 ? "Winner takes" : "Prize pool"}</div>
-            <div className="font-mono-pz text-4xl font-extrabold text-green-400" data-testid="race-prize">{r.prize}</div>
+            <div className="font-mono-pz text-4xl font-extrabold text-green-400" data-testid="race-prize">{r.is_1v1 || r.prize > 0 ? r.prize : `up to ${Math.round(r.entry_fee * r.max_players * (1 - (r.kind === "friends" ? 0 : 0.1)))}`}</div>
             <div className="text-xs text-white/70">Entry {r.entry_fee} · <Users className="inline h-3 w-3" /> {r.current_players}/{r.max_players}</div>
           </div>
         </div>

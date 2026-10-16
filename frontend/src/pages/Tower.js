@@ -65,9 +65,9 @@ export default function Tower() {
       const { data } = await api.post("/games/tower/pick", { session_id: game.session_id, nonce: game.nonce, col });
       setPicks((p) => ({ ...p, [r]: col }));
       if (!data.safe) {
-        setBombs(data.bombs_layout); setGame((g) => ({ ...g, status: "lost" }));
+        setBombs(data.bombs_layout || Array.from({ length: game.rows }, (_, i) => (i === r ? [col] : []))); setGame((g) => ({ ...g, status: "lost" }));
         window.dispatchEvent(new Event("wallet:refresh")); if (race.id) race.finished();
-        setTimeout(() => showPopup({ type: "warning", title: "Boom! Tower collapsed", message: "Play again and climb higher." }), 700);
+        setTimeout(() => showPopup({ type: "warning", title: "Boom! Tower collapsed", message: race.id ? "Your race score is in. Check the lobby for results." : "Play again and climb higher." }), 700);
       } else if (data.finished) {
         setBombs(data.bombs_layout); setGame((g) => ({ ...g, row: data.row, status: "won" }));
         window.dispatchEvent(new Event("wallet:refresh")); winOrRace(data.prize);

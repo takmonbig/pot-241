@@ -96,7 +96,7 @@ export default function Aviator() {
       if (sess.current !== s) return clearInterval(iv);
       try {
         const { data } = await api.post("/games/aviator/status", { session_id: s.session_id, nonce: s.nonce, multiplier: 0 });
-        if (data.crashed) { clearInterval(iv); canvas.current?.setCrash(data.crash_point); }
+        if (data.crashed) { clearInterval(iv); canvas.current?.setCrash(data.crash_point ?? 1); }
       } catch (e) { clearInterval(iv); }
     }, 250);
   };

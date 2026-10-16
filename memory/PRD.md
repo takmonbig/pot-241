@@ -127,3 +127,15 @@ UX/feature overhaul (verified iter5 14/14 + full regression, all critical fronte
 ## Backlog
 - P1: Clean template for duplicating project per client.
 - P2: Admin UI controls for aviator_config/tower_config; WebSockets for rooms; Streak ladder; admin dashboard summary; refactor server.py into routers.
+
+## Iteration 13-14 — Race Multiplayer for all games, AI demo videos, Nest Egg (2026-06)
+- **Race mode** (`backend/race.py`, `/api/race/*`): Aviator, T Mines, Chicken, Tower (stack), Vortex playable in **1v1** (2 players, winner 1.8x), **Rooms** (2-8, 10% fee, top score takes pool) and **Play with Friends** (RF code, host start, 1v1 2x / group winner takes all, 0 fee). Same provably-fair seed for all players; score = multiplier banked (stack = height + speed bonus). Ties go to the earlier finisher; all-zero means refund. Bots fill public rooms after 30s (bot_config). Moves reuse the normal game endpoints; settle hooks skip wallet credits for race sessions. Aviator race hides crash_point (new `/games/aviator/status` poll); a late cashout after the crash is rejected (0.6s grace, solo too). Tower bombs and chicken hazard are hidden in race responses.
+- Stopwatch keeps the old rooms. The /1v1 and /multiplayer pages are now ModeLobby with game tabs; race lobby page `/race/:id`; game pages accept `?race=<id>` (RaceBar, bet hidden, one run).
+- **AI demo videos** (Kling v3 via fal.ai, Universal Key) in `frontend/public/videos/{sm,hd}/*.webm|mp4` (generator: `backend/scripts/gen_demo_videos.py`). Hub cards loop the videos. First-time "How to play" popup per game + per category (1v1/rooms/friends), plus a Help button.
+- Chicken: animated golden nest egg cracks open to reveal the winnings; lane multipliers shown in a grid; road scrolls into view.
+- Removed the Provably Fair panel from the Chicken/Vortex pages. Admin header aligned (max-w-7xl). Profile earned shows 2 decimals. stack mp_enabled default False; chicken default mode medium.
+- Tests: iteration_13/14 (backend race tests 23/24 pass; 1 flaky balance assertion due to concurrent rooms).
+
+## Backlog
+- P1: Live real-time spectating of race opponents (WebSocket), race history in Profile.
+- P2: Admin config for race fees/multipliers; cleanup of abandoned race sessions; split games_extra.py (>1000 lines).
