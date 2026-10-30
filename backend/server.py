@@ -44,7 +44,7 @@ JWT_ALGORITHM = "HS256"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("pazer")
 
-app = FastAPI(title="PAZER API")
+app = FastAPI(title="POT24 API")
 api = APIRouter(prefix="/api")
 
 LATENCY_BOUND = 2.5  # seconds tolerated between server-measured and client-reported elapsed
@@ -2198,7 +2198,7 @@ async def admin_audit_logs(admin: dict = Depends(require_admin)):
 
 @api.get("/")
 async def root():
-    return {"message": "TIMEUP API", "status": "ok"}
+    return {"message": "POT24 API", "status": "ok"}
 
 
 import games_extra  # noqa: E402  (registers Vortex Spin / Chicken Quest / Tower Stack routes)
@@ -2226,7 +2226,7 @@ async def seed_admin():
     if not existing:
         await db.users.insert_one({
             "username": "admin", "mobile": mobile, "password_hash": hash_password(password),
-            "display_name": "TIMEUP Admin", "full_name": "TIMEUP Admin", "role": "admin", "status": "active",
+            "display_name": "POT24 Admin", "full_name": "POT24 Admin", "role": "admin", "status": "active",
             "kyc_status": "verified", "main_balance": 0.0, "bonus_balance": 0.0,
             "stats": {"games_played": 0, "games_won": 0, "total_entries": 0.0, "total_prizes": 0.0},
             "created_at": now_iso(),
@@ -2280,7 +2280,7 @@ async def startup():
     asyncio.create_task(room_manager_loop())
     asyncio.create_task(games_extra.stack_room_loop())
     asyncio.create_task(race.race_loop())
-    logger.info("TIMEUP API started")
+    logger.info("POT24 API started")
 
 
 @app.on_event("shutdown")

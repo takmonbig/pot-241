@@ -28,10 +28,13 @@ module.exports = {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         pazer: {
-          bg: "#050505",
-          card: "#0f0f0f",
-          red: "#ff2a2a",
-          redhover: "#ff4d4d",
+          bg: "#060503",
+          card: "#100c06",
+          gold: "#f5b301",
+          orange: "#ff7a00",
+          cream: "#fff6e0",
+          red: "#f5b301",
+          redhover: "#ffc933",
         },
       },
       keyframes: {

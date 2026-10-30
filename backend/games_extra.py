@@ -1,4 +1,4 @@
-"""TIMEUP extra games: Vortex Spin, Chicken Quest (provably fair) and Tower Stack (skill, 3D).
+"""POT24 extra games: Vortex Spin, Chicken Quest (provably fair) and Tower Stack (skill, 3D).
 
 Imported by server.py right before the API router is mounted. Uses server helpers lazily
 via the `server` module so there is no circular-import problem.

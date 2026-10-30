@@ -42,7 +42,7 @@ function BigMultiplier({ phase, mult, cashed }) {
           {crashed && <div className="font-display font-bold text-sm tracking-[0.3em] text-pazer-red mb-1" data-testid="aviator-flew-away">FLEW AWAY!</div>}
           <div data-testid="aviator-multiplier"
             className={`font-display font-extrabold text-6xl sm:text-7xl tabular-nums ${crashed ? "text-pazer-red" : "text-white"}`}
-            style={{ textShadow: crashed ? "0 0 30px rgba(255,42,42,0.8)" : "0 0 28px rgba(255,120,40,0.7)" }}>
+            style={{ textShadow: crashed ? "0 0 30px rgba(245,179,1,0.8)" : "0 0 28px rgba(255,120,40,0.7)" }}>
             {mult.toFixed(2)}x
           </div>
           {cashed && <div className="mt-2 rounded-full bg-green-500/20 border border-green-400/50 px-3 py-1 text-green-300 text-sm font-bold" data-testid="aviator-cashed-badge">Cashed out @ {cashed.toFixed(2)}x</div>}

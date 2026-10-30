@@ -63,8 +63,8 @@ export default function RaceRoom() {
     finally { setBusy(false); }
   };
   const copy = async () => {
-    const text = `Join my ${g.name} race on TIMEUP! Code: ${r.room_code}`;
-    try { if (navigator.share) await navigator.share({ title: "TIMEUP", text }); else { await navigator.clipboard.writeText(r.room_code); } } catch (e) { /* cancelled */ }
+    const text = `Join my ${g.name} race on POT24! Code: ${r.room_code}`;
+    try { if (navigator.share) await navigator.share({ title: "POT24", text }); else { await navigator.clipboard.writeText(r.room_code); } } catch (e) { /* cancelled */ }
     setCopied(true); setTimeout(() => setCopied(false), 1500);
   };
 

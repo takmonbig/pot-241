@@ -7,30 +7,28 @@ import { SciFiBackground } from "@/components/SciFiBackground";
 import { CenterPopupHost } from "@/components/CenterPopup";
 import { WinCelebrationHost } from "@/components/WinCelebration";
 import { QuickActions } from "@/components/QuickActions";
-import { Timer, ShieldCheck, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { LOGO_SM } from "@/lib/brand";
 
 function Loader() {
   return (
     <div className="min-h-screen flex items-center justify-center pz-radial">
-      <Timer className="h-10 w-10 text-pazer-red animate-spin" />
+      <img src={LOGO_SM} alt="POT24" className="h-20 w-auto animate-pulse" />
     </div>
   );
 }
 
 function AdminHeader() {
-  const { logout } = useAuth();
   const nav = useNavigate();
-  const doLogout = async () => { await logout(); nav("/admin/login", { replace: true }); };
+  const doLogout = () => nav("/bye?to=admin");
   return (
-    <header className="sticky top-0 z-50 bg-[#0a0e17]/90 backdrop-blur border-b border-white/10">
+    <header className="sticky top-0 z-50 bg-[#080603]/95 backdrop-blur border-b border-amber-400/20">
       <div className="mx-auto max-w-7xl px-4 md:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2.5" data-testid="admin-brand">
-          <div className="h-9 w-9 rounded-lg bg-blue-600/20 border border-blue-500/40 flex items-center justify-center">
-            <ShieldCheck className="h-5 w-5 text-blue-400" />
-          </div>
+          <img src={LOGO_SM} alt="POT24" className="h-12 w-auto" />
           <div>
-            <p className="font-display font-bold text-white leading-none">Admin Console</p>
-            <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">TIMEUP</p>
+            <p className="font-display font-bold leading-none pz-gold-text">Admin Console</p>
+            <p className="text-[10px] text-white/40 uppercase tracking-wider mt-0.5">POT24</p>
           </div>
         </div>
         <button onClick={doLogout} data-testid="admin-logout"
@@ -50,7 +48,7 @@ export function ProtectedRoute({ adminOnly }) {
   if (!adminOnly && user.role === "admin") return <Navigate to="/admin" replace />;
   if (adminOnly) {
     return (
-      <div className="min-h-screen bg-[#080b12]">
+      <div className="min-h-screen bg-[#060503]" style={{ backgroundImage: "radial-gradient(circle at 85% 0%, rgba(245,179,1,0.08), transparent 45%)" }}>
         <AdminHeader />
         <Outlet />
       </div>

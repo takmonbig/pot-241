@@ -6,8 +6,8 @@ const FAQS = [
   ["How does the Fixed Challenge work?", "Choose your bet (minimum 20 coins) and a target time, then stop the stopwatch EXACTLY at the target. Hit it precisely and you win 5× your bet."],
   ["How is the 1v1 / room winner decided?", "The player whose stop time is closest to the target (smallest absolute difference) wins. If two players tie exactly, the earliest valid recorded stop wins. 1v1 pays the winner 1.5×; rooms pay from the prize pool."],
   ["What happens if a room doesn't fill up?", "If the minimum number of players isn't reached by the joining deadline, the room is automatically cancelled and every entry fee is fully refunded to your wallet."],
-  ["What are TIMEUP Coins?", "TIMEUP Coins are the virtual currency of the platform. 1 Coin = ₹1. Deposits convert to coins and may include a promotional bonus."],
-  ["Is this gambling?", "TIMEUP is a skill-based timing game — your reaction and timing precision determine the outcome, not chance. Play responsibly, 18+."],
+  ["What are POT24 Coins?", "POT24 Coins are the virtual currency of the platform. 1 Coin = ₹1. Deposits convert to coins and may include a promotional bonus."],
+  ["Is this gambling?", "POT24 is a skill-based timing game — your reaction and timing precision determine the outcome, not chance. Play responsibly, 18+."],
   ["How do withdrawals work?", "Withdrawals require completed KYC verification and are reviewed by our team before processing. Minimum and maximum limits apply."],
 ];
 
@@ -26,7 +26,7 @@ export default function Support() {
         <LifeBuoy className="h-6 w-6 text-pazer-red" />
         <h1 className="font-display font-bold text-3xl tracking-tight">Support & Rules</h1>
       </div>
-      <p className="text-white/50 mb-8">Everything you need to master PAZER.</p>
+      <p className="text-white/50 mb-8">Everything you need to master POT24.</p>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl pz-glass p-6 mb-6">
         <h2 className="font-display font-bold text-xl mb-4">Game Rules</h2>
@@ -54,9 +54,9 @@ export default function Support() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl pz-glass p-6">
         <h2 className="font-display font-bold text-xl mb-3">Responsible Gaming</h2>
         <p className="text-white/60 text-sm leading-relaxed">
-          TIMEUP involves paid entries and virtual rewards. Play within your limits and take breaks. Real-money features
+          POT24 involves paid entries and virtual rewards. Play within your limits and take breaks. Real-money features
           are enabled only after compliance approval and completed KYC. This platform is intended for players aged 18+.
-          If gaming stops being fun, please step away. Contact support@timeup.com for help or self-exclusion requests.
+          If gaming stops being fun, please step away. Contact support@pot24.com for help or self-exclusion requests.
         </p>
       </motion.div>
     </div>

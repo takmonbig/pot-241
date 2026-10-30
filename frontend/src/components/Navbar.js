@@ -7,7 +7,7 @@ import api from "@/lib/api";
 import { LOGO_URL } from "@/lib/brand";
 
 export function Navbar() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const loc = useLocation();
   const nav = useNavigate();
   const [balance, setBalance] = useState(null);
@@ -27,13 +27,13 @@ export function Navbar() {
     return () => { window.removeEventListener("wallet:refresh", refetch); clearInterval(iv); window.removeEventListener("focus", tick); };
   }, []);
 
-  const doLogout = async () => { await logout(); nav("/welcome"); };
+  const doLogout = () => nav("/bye");
 
   return (
     <header className="sticky top-0 z-50 pz-glass">
       <div className="mx-auto max-w-6xl px-4 md:px-8 h-16 flex items-center justify-between gap-4">
         <Link to={user ? "/home" : "/"} className="flex items-center" data-testid="nav-logo">
-          <img src={LOGO_URL} alt="TIMEUP" className="h-8 md:h-9 w-auto" style={{ filter: "drop-shadow(0 0 10px rgba(255,42,42,0.35))" }} />
+          <img src={LOGO_URL} alt="POT24" className="h-12 md:h-14 w-auto -my-1" style={{ filter: "drop-shadow(0 0 10px rgba(245,179,1,0.35))" }} />
         </Link>
 
         <div className="flex items-center gap-2.5">

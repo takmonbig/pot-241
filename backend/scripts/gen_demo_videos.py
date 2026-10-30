@@ -14,9 +14,9 @@ EMERGENT_LLM_KEY = os.environ["EMERGENT_LLM_KEY"]
 CONTROL_BASE = os.environ.get("INTEGRATION_PROXY_URL", "https://integrations.emergentagent.com").rstrip("/") + "/api/v1/fal"
 PUBLIC_QUEUE_BASE = f"{CONTROL_BASE}/queue"
 ENDPOINT = "fal-ai/kling-video/v3/standard/text-to-video"
-OUT = "/app/frontend/public/videos"
+OUT = "/app/backend/scripts/raw_videos"
 
-STYLE = " Dark neon casino game UI aesthetic, glossy 3D render, red and gold neon glow, cinematic lighting, smooth motion, no text."
+STYLE = " Luxury black and gold casino aesthetic, glossy 3D render, deep black background with rich gold and warm orange glow, golden crown sparkle accents, cinematic lighting, smooth motion, no text."
 PROMPTS = {
     "stopwatch": "A glowing 3D digital stopwatch counts up, a finger taps a big red STOP button exactly when the timer hits the target, gold coins burst out in celebration.",
     "aviator": "A small red 3D airplane takes off and climbs along a glowing curve over a dark sky while a multiplier rises, then a player cashes out and gold coins rain before the plane flies away.",

@@ -20,7 +20,7 @@ export function BottomNav() {
           return (
             <Link key={it.to} to={it.to} data-testid={`bottomnav-${it.label.toLowerCase()}`}
               className="relative flex flex-col items-center gap-1 py-2.5 group">
-              {active && <motion.span layoutId="bnav-pill" className="absolute -top-px h-0.5 w-10 rounded-full bg-pazer-red" style={{ boxShadow: "0 0 10px #ff2a2a" }} />}
+              {active && <motion.span layoutId="bnav-pill" className="absolute -top-px h-0.5 w-10 rounded-full bg-pazer-red" style={{ boxShadow: "0 0 10px #f5b301" }} />}
               <it.icon className={`h-5 w-5 transition-colors ${active ? "text-pazer-red" : "text-white/45 group-hover:text-white/80"}`} strokeWidth={active ? 2.5 : 2} />
               <span className={`text-[10px] font-medium transition-colors ${active ? "text-pazer-red" : "text-white/45 group-hover:text-white/80"}`}>{it.label}</span>
             </Link>

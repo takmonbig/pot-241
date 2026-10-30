@@ -92,7 +92,7 @@ export function Tower3D({ rows, cols, mults, activeRow, picks, bombs, status, on
         t.item = makeBomb(); t.item.position.set(p.x, p.y + 0.5, p.z); t.item.scale.setScalar(state === "bomb" ? 1 : 0.7); tower.add(t.item);
         if (state === "bomb") {
           t.flip = 1; shake = 0.6;
-          for (let i = 0; i < 220; i++) { const a = rand(0, 6.28); const v = rand(2, 9); boom.emit({ x: p.x, y: p.y + 0.5, z: p.z, vx: Math.cos(a) * v, vy: rand(1, 8), vz: Math.sin(a) * v, g: 9, drag: 1.4, life: rand(0.5, 1.4), color: [0xffdd55, 0xff7a2a, 0xff2a2a, 0x444444][i % 4] }); }
+          for (let i = 0; i < 220; i++) { const a = rand(0, 6.28); const v = rand(2, 9); boom.emit({ x: p.x, y: p.y + 0.5, z: p.z, vx: Math.cos(a) * v, vy: rand(1, 8), vz: Math.sin(a) * v, g: 9, drag: 1.4, life: rand(0.5, 1.4), color: [0xffdd55, 0xff7a2a, 0xf5a300, 0x444444][i % 4] }); }
         }
       } else {
         t.mat.color.setHex(0x3a2f2a); t.mat.emissive.setHex(0x000000); t.mat.emissiveIntensity = 0;

@@ -122,7 +122,7 @@ export const Vortex3D = forwardRef(function Vortex3D({ segments, loseSlots, them
     };
     api3.current.lose = () => {
       shake = 0.7; flash.intensity = 500; sfx.explode();
-      for (let i = 0; i < 260; i++) { const a = rand(0, 6.28); const v = rand(2, 9); burst.emit({ x: Math.cos(a) * 1.2, y: Math.sin(a) * 1.2, z: 0.5, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: rand(0, 4), g: 3, drag: 1.2, life: rand(0.6, 1.4), color: [0xff2a2a, 0x330000, 0xff7a2a][i % 3] }); }
+      for (let i = 0; i < 260; i++) { const a = rand(0, 6.28); const v = rand(2, 9); burst.emit({ x: Math.cos(a) * 1.2, y: Math.sin(a) * 1.2, z: 0.5, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: rand(0, 4), g: 3, drag: 1.2, life: rand(0.6, 1.4), color: [0xf5a300, 0x330000, 0xff7a2a][i % 3] }); }
     };
     api3.current.win = () => {
       const th = THEME3D[props.current.theme];

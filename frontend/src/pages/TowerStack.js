@@ -187,7 +187,7 @@ export default function TowerStack() {
         <StackScene ref={sceneRef} onFrame={onFrame} className="absolute inset-0" />
         <div className="pointer-events-none absolute inset-x-0 top-0 p-4 flex items-start justify-between">
           <div>
-            <div className="font-mono-pz text-5xl font-extrabold drop-shadow-[0_0_12px_rgba(255,45,85,.6)]" data-testid="stack-height">{hud.height}</div>
+            <div className="font-mono-pz text-5xl font-extrabold drop-shadow-[0_0_12px_rgba(245,179,1,.6)]" data-testid="stack-height">{hud.height}</div>
             <div className="text-[11px] uppercase tracking-widest text-white/50">Height · {hud.perfects} perfect</div>
           </div>
           <div className="text-right">

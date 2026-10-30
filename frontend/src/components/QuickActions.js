@@ -185,9 +185,9 @@ function ReferralModal({ open, onClose }) {
     setTimeout(() => setCopied(false), 1500);
   };
   const share = async () => {
-    const text = `Join me on TIMEUP! Use my code ${code} to sign up and we both get 10 bonus coins. ${window.location.origin}/register`;
+    const text = `Join me on POT24! Use my code ${code} to sign up and we both get 10 bonus coins. ${window.location.origin}/register`;
     try {
-      if (navigator.share) await navigator.share({ title: "TIMEUP", text });
+      if (navigator.share) await navigator.share({ title: "POT24", text });
       else { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }
     } catch (e) { /* cancelled */ }
   };

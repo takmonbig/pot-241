@@ -37,7 +37,7 @@ export function HowToPlay({ k, auto = true }) {
           <div className="px-5 pb-5 -mt-6 relative">
             <DialogHeader>
               <DialogTitle className="font-display text-2xl flex items-center gap-2">
-                <Icon className="h-5 w-5" style={{ color: meta.color || "#ff2d55" }} /> How to play {meta.name}
+                <Icon className="h-5 w-5" style={{ color: meta.color || "#f5b301" }} /> How to play {meta.name}
               </DialogTitle>
             </DialogHeader>
             <ol className="mt-3 space-y-2">

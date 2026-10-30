@@ -126,7 +126,7 @@ export function Chicken3D({ mults, step, status, hazardAt, hardcore }) {
           if (!ch.dead && ch.t >= 1 && L.car.position.z > -1.2) {
             ch.dead = true; sfx.crash();
             for (let k = 0; k < 90; k++) feathers.emit({ x: ch.x, y: 0.8, z: 0, vx: rand(-4, 4), vy: rand(2, 7), vz: rand(-1, 6), g: 3, drag: 2, life: rand(1, 2), color: 0xffffff });
-            for (let k = 0; k < 140; k++) fire.emit({ x: ch.x, y: 0.5, z: 0, vx: rand(-3, 3), vy: rand(1, 6), vz: rand(-3, 3), g: 2, drag: 1.5, life: rand(0.4, 1.1), color: [0xffdd55, 0xff7a2a, 0xff2a2a][k % 3] });
+            for (let k = 0; k < 140; k++) fire.emit({ x: ch.x, y: 0.5, z: 0, vx: rand(-3, 3), vy: rand(1, 6), vz: rand(-3, 3), g: 2, drag: 1.5, life: rand(0.4, 1.1), color: [0xffdd55, 0xff7a2a, 0xf5a300][k % 3] });
           }
           if (L.car.position.z > ROAD_Z / 2) L.car.position.z = ROAD_Z / 2;
         } else {

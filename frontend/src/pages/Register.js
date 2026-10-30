@@ -33,7 +33,7 @@ export default function Register() {
     <div className="min-h-screen pz-radial pz-grain flex items-center justify-center px-4 py-12">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <Link to="/" className="flex justify-center mb-8">
-          <img src={LOGO_URL} alt="TIMEUP" className="h-11 w-auto" style={{ filter: "drop-shadow(0 0 12px rgba(255,42,42,0.4))" }} />
+          <img src={LOGO_URL} alt="POT24" className="h-32 w-auto" style={{ filter: "drop-shadow(0 0 12px rgba(245,179,1,0.4))" }} />
         </Link>
         <div className="pz-glass rounded-2xl p-8">
           <h1 className="font-display font-bold text-2xl mb-1">Create account</h1>

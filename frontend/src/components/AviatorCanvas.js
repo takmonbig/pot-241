@@ -88,7 +88,7 @@ export const AviatorCanvas = forwardRef(function AviatorCanvas({ onTick, onCrash
     const runway = new THREE.Mesh(new THREE.BoxGeometry(14, 0.1, 3), new THREE.MeshStandardMaterial({ color: 0x202024, roughness: 0.7 }));
     runway.position.set(0, -0.62, 0); runway.receiveShadow = true; scene.add(runway);
     const lights = [];
-    for (let i = 0; i < 12; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xff2a2a : 0xffe08a })); l.position.set(-6 + i * 1.1, -0.52, 1.45); scene.add(l); lights.push(l); }
+    for (let i = 0; i < 12; i++) { const l = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xf5a300 : 0xffe08a })); l.position.set(-6 + i * 1.1, -0.52, 1.45); scene.add(l); lights.push(l); }
     const { p: plane, prop, wheels } = buildPlane();
     scene.add(plane);
     // preallocated ribbon trail (no per-frame geometry allocation)
@@ -136,7 +136,7 @@ export const AviatorCanvas = forwardRef(function AviatorCanvas({ onTick, onCrash
           sfx.explode(); engine?.stop(); engine = null;
           for (let i = 0; i < 260; i++) {
             const a = rand(0, Math.PI * 2); const b = rand(-1, 1); const v = rand(2, 11);
-            boom.emit({ x: plane.position.x, y: plane.position.y, z: plane.position.z, vx: Math.cos(a) * v * Math.sqrt(1 - b * b), vy: b * v + 2, vz: Math.sin(a) * v * Math.sqrt(1 - b * b), g: 6, drag: 1.2, life: rand(0.6, 1.8), color: [0xffdd55, 0xff7a2a, 0xff2a2a, 0xffffff][i % 4] });
+            boom.emit({ x: plane.position.x, y: plane.position.y, z: plane.position.z, vx: Math.cos(a) * v * Math.sqrt(1 - b * b), vy: b * v + 2, vz: Math.sin(a) * v * Math.sqrt(1 - b * b), g: 6, drag: 1.2, life: rand(0.6, 1.8), color: [0xffdd55, 0xff7a2a, 0xf5a300, 0xffffff][i % 4] });
           }
           flash.position.copy(plane.position); flash.intensity = 400;
           fall = { vy: 2, spin: rand(4, 8) };
@@ -151,7 +151,7 @@ export const AviatorCanvas = forwardRef(function AviatorCanvas({ onTick, onCrash
         plane.rotation.z = damp(plane.rotation.z, Math.atan2(d.y, Math.max(0.0001, d.x)) * 0.9, 6, dt);
         plane.rotation.x = Math.sin(now / 600) * 0.12;
         if (frame % 2 === 0) pushTrail(x - 1.4, y);
-        for (let i = 0; i < 2; i++) exhaust.emit({ x: x - 1.6, y: y + rand(-0.1, 0.1), z: rand(-0.15, 0.15), vx: rand(-4, -2), vy: rand(-0.4, 0.4), vz: rand(-0.4, 0.4), life: rand(0.3, 0.7), color: Math.random() > 0.5 ? 0xff7a2a : 0xff2a2a, drag: 2 });
+        for (let i = 0; i < 2; i++) exhaust.emit({ x: x - 1.6, y: y + rand(-0.1, 0.1), z: rand(-0.15, 0.15), vx: rand(-4, -2), vy: rand(-0.4, 0.4), vz: rand(-0.4, 0.4), life: rand(0.3, 0.7), color: Math.random() > 0.5 ? 0xff7a2a : 0xf5a300, drag: 2 });
         wheels.forEach((w) => { w.visible = y < 1.5; });
       } else if (s.mode === "crash") {
         fall.vy -= 14 * dt;
@@ -176,7 +176,7 @@ export const AviatorCanvas = forwardRef(function AviatorCanvas({ onTick, onCrash
       rim.position.set(camX - 6, camY + 3, 4);
       const base = Math.floor((camX + 30) / 60);
       chunks.forEach((c, i) => { c.position.x = (base + i - 1) * 60; });
-      lights.forEach((l, i) => { l.material.color.setHex(Math.floor(now / 300 + i) % 2 ? 0xff2a2a : 0xffe08a); });
+      lights.forEach((l, i) => { l.material.color.setHex(Math.floor(now / 300 + i) % 2 ? 0xf5a300 : 0xffe08a); });
     });
     return () => { engine?.stop(); S.dispose(); };
   }, []);

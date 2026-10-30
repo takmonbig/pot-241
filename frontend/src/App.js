@@ -8,6 +8,7 @@ import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Splash from "@/pages/Splash";
+import Goodbye from "@/pages/Goodbye";
 import GameHome from "@/pages/GameHome";
 import GamesHub from "@/pages/GamesHub";
 import Aviator from "@/pages/Aviator";
@@ -49,6 +50,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/splash" element={<Splash />} />
+            <Route path="/bye" element={<Goodbye />} />
             <Route element={<ProtectedRoute />}>
               <Route path="/home" element={<GamesHub />} />
               <Route path="/games/stopwatch" element={<GameHome />} />

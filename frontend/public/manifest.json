@@ -1,0 +1,12 @@
+{
+  "short_name": "POT24",
+  "name": "POT24 — Play Like Royalty",
+  "icons": [
+    { "src": "/brand/icon_192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/brand/icon_512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#060503",
+  "background_color": "#060503"
+}

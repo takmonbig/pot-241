@@ -33,7 +33,7 @@ export default function Home() {
               Stop the clock. <span className="text-pazer-red pz-glow">Beat the room.</span>
             </motion.h1>
             <motion.p variants={fadeUp} custom={2} className="mt-6 text-lg text-white/60 max-w-xl">
-              PAZER is a precision timing game. Choose a target, start the stopwatch, and stop it as close as
+              POT24 is a precision timing game. Choose a target, start the stopwatch, and stop it as close as
               possible. Your timing is your skill.
             </motion.p>
             <motion.div variants={fadeUp} custom={3} className="mt-9 flex flex-wrap items-center gap-4">
@@ -113,10 +113,10 @@ export default function Home() {
       {/* HOW */}
       <section className="mx-auto max-w-7xl px-4 md:px-8 py-16">
         <div className="rounded-3xl pz-glass p-8 md:p-12">
-          <h2 className="font-display font-bold text-3xl tracking-tight mb-10">How PAZER works</h2>
+          <h2 className="font-display font-bold text-3xl tracking-tight mb-10">How POT24 works</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {[
-              ["01", "Deposit", "Add PAZER Coins and grab your promotional bonus."],
+              ["01", "Deposit", "Add POT24 Coins and grab your promotional bonus."],
               ["02", "Choose target", "Pick a fixed challenge or join a live room."],
               ["03", "Stop the clock", "One tap. Nail the target time."],
               ["04", "Win", "Server validates, prize hits your wallet instantly."],
@@ -137,7 +137,7 @@ export default function Home() {
           <div className="absolute inset-0 opacity-20"><Timer className="h-full w-full" /></div>
           <div className="relative">
             <h2 className="font-display font-extrabold text-3xl md:text-5xl tracking-tight mb-4">Ready to test your timing?</h2>
-            <p className="text-white/80 mb-8 max-w-lg mx-auto">Join PAZER and turn milliseconds into wins.</p>
+            <p className="text-white/80 mb-8 max-w-lg mx-auto">Join POT24 and turn milliseconds into wins.</p>
             <Link to={cta} className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-black text-white font-bold hover:bg-black/80 transition-colors">
               Get Started Free <ArrowRight className="h-4 w-4" />
             </Link>
@@ -146,7 +146,7 @@ export default function Home() {
       </section>
 
       <footer className="border-t border-white/10 py-8 text-center text-white/40 text-sm">
-        <p className="font-display font-bold text-white/70 mb-1">PAZER</p>
+        <p className="font-display font-bold text-white/70 mb-1">POT24</p>
         <p>Skill-based timing game · Play responsibly · 18+</p>
       </footer>
     </div>

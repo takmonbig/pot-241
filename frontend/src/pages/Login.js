@@ -40,11 +40,11 @@ export default function Login() {
     <div className="min-h-screen pz-radial pz-grain flex items-center justify-center px-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <Link to="/" className="flex justify-center mb-8">
-          <img src={LOGO_URL} alt="TIMEUP" className="h-11 w-auto" style={{ filter: "drop-shadow(0 0 12px rgba(255,42,42,0.4))" }} />
+          <img src={LOGO_URL} alt="POT24" className="h-32 w-auto" style={{ filter: "drop-shadow(0 0 12px rgba(245,179,1,0.4))" }} />
         </Link>
         <div className="pz-glass rounded-2xl p-8">
           <h1 className="font-display font-bold text-2xl mb-1">Log in</h1>
-          <p className="text-white/50 text-sm mb-6">Master your timing.</p>
+          <p className="text-white/50 text-sm mb-6">Welcome back. Your throne awaits.</p>
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="text-xs uppercase tracking-wider text-white/50">Country &amp; Mobile Number</label>
