@@ -148,3 +148,25 @@ UX/feature overhaul (verified iter5 14/14 + full regression, all critical fronte
 - New Landing (/welcome) with the logo hero and a 6-game video grid.
 - 9 demo videos regenerated in black & gold (Kling v3); posters in /videos/poster.
 - Test: iteration_15 (frontend 92%, contrast issues fixed afterwards).
+
+## Iteration 16 — Reference redesign + 7 new games (2026-06)
+- Reference screens saved in /app/reference (mlgame.co style). Brand kept as POT24; login stays mobile+password.
+- **New games** (`backend/house_games.py`, router /api/house/*):
+  - Color Prediction (30s global rounds: colour/number/big-small) and Matka (120s draws: single 9x / jodi 90x). A settle loop runs inside the backend; the seed is revealed after settle.
+  - Andar Bahar, Teen Patti (instant vs house), Break the 10 (hit/stand vs dealer).
+  - Ludo Lite (2 tokens, 30 squares, vs bot) and Call Break Lite (5 cards, 3 bots, spades trump). Both are server-authoritative.
+  - Admin config in the Mongo `house_config` doc (payouts/limits via PUT /api/admin/house/config).
+- **Admin can set results**: POST /api/admin/house/control (aviator force crash for N rounds, color/matka result for the current round). Overridden rounds hide their seed (marked admin_set); every change is audit-logged.
+- GET /api/admin/dashboard (KPIs, deposits vs withdrawals series, game-wise wagered, live users, pending withdrawals, fraud alerts, agents/top referrers). GET /api/profile/summary. GET /api/feed/live (real deposits/withdrawals masked, today's jackpot = biggest win).
+- **Frontend**:
+  - New header (hamburger drawer + centred logo + ₹ balance pill) and bottom nav (Home / VIP Club / Daily Bonus / Offers / Rewards → /club/:tab).
+  - Home redesigned like the reference (balance card, jackpot, Popular Games, Bet on Player, 1v1/Rooms, live deposits/withdrawals, Refer & Earn).
+  - New pages: /games/color, /matka, /andar, /teen, /break10, /ludo, /callbreak, /games/all, /bet-on-player (Daily Slots UI is local-only), /club/*.
+  - Profile summary block, admin dashboard on the Overview tab, Aviator FUN MODE (virtual coins), fiery login restyle.
+- Game art in /frontend/public/games (AI generated).
+- Tests: iteration_16 (backend 100%, frontend ~92%; all reported issues fixed afterwards).
+
+## Backlog
+- P1: Real scheduled Daily Slot tournaments (Bet on Player) with entry fees and leaderboards; real-time PvP Ludo/Call Break between humans.
+- P1: Matka "rooms" creator from the admin reference; agent sub-accounts with their own commission.
+- P2: Split Admin.js (820 lines) and games_extra.py; aviator start still returns crash_point to the client (pre-existing).

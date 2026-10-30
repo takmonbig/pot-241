@@ -161,9 +161,11 @@ async def timed_state(game: str, user: dict = Depends(S.get_current_user)):
         raise HTTPException(status_code=404, detail="Unknown game")
     cfg = await hcfg()
     r = await _current_round(game, cfg[game])
-    hist = await S.db.timed_rounds.find({"game": game, "status": "settled"}, {"_id": 0, "server_seed": 0}).sort("ends_at", -1).to_list(20)
+    hist = await S.db.timed_rounds.find({"game": game, "status": "settled"}, {"_id": 0}).sort("ends_at", -1).to_list(20)
     for h in hist:
-        h.pop("overridden", None)
+        if h.pop("overridden", False):
+            h.pop("server_seed", None)
+            h["admin_set"] = True
     mine = await S.db.timed_bets.find({"user_id": str(user["_id"]), "game": game}, {"_id": 0}).sort("created_at", -1).to_list(15)
     c = {k: v for k, v in cfg[game].items()}
     return {"round": _round_public(r, cfg[game]), "history": hist, "my_bets": mine, "config": c}
@@ -331,6 +333,8 @@ async def b10_start(body: BetReq, user: dict = Depends(S.get_current_user)):
 @router.post("/house/break10/act")
 async def b10_act(body: ActReq, user: dict = Depends(S.get_current_user)):
     s = await _get_session(body.session_id, user, "break10")
+    if body.action not in ("hit", "stand"):
+        raise HTTPException(status_code=400, detail="Action must be hit or stand")
     c = (await hcfg())["break10"]
     st, d = s["state"], deck(s["seed"])
     tot = lambda h: sum(b10_val(x) for x in h)  # noqa: E731
@@ -561,6 +565,7 @@ async def profile_summary(user: dict = Depends(S.get_current_user)):
     uid = str(user["_id"])
     games = await S.db.games.find({"user_id": uid}, {"_id": 0}).sort("created_at", -1).to_list(2000)
     wins = sum(1 for g in games if g["result"] == "won")
+    pushes = sum(1 for g in games if g["result"] != "won" and g.get("entry_fee") and abs(g.get("prize", 0) - g["entry_fee"]) < 0.01)
     wag = sum(g.get("entry_fee", 0) for g in games)
     won_amt = sum(g.get("prize", 0) for g in games)
     fav = Counter(g["mode"] for g in games).most_common(1)
@@ -573,8 +578,8 @@ async def profile_summary(user: dict = Depends(S.get_current_user)):
     st = {"matches": len(games), "wagered": wag, "streak": streak, "best_mult": best}
     profit = round(won_amt - wag, 2)
     better = await S.db.users.count_documents({"role": "user", "stats.total_winnings": {"$gt": (user.get("stats") or {}).get("total_winnings", 0)}})
-    return {"total_matches": len(games), "wins": wins, "losses": len(games) - wins,
-            "win_rate": round(wins * 100 / len(games), 1) if games else 0, "profit": profit,
+    return {"total_matches": len(games), "wins": wins, "losses": len(games) - wins - pushes, "pushes": pushes,
+            "win_rate": round(wins * 100 / (len(games) - pushes), 1) if len(games) > pushes else 0, "profit": profit,
             "favorite_game": G.GAME_LABELS.get(fav[0][0], fav[0][0]) if fav else None, "rank": better + 1,
             "badges": [{"id": i, "name": n, "earned": f(st)} for i, n, f in BADGES],
             "last_matches": [{"game": G.GAME_LABELS.get(g["mode"], g["mode"]), "outcome": _outcome(g), "amount": g.get("prize") if g["result"] == "won" else g.get("entry_fee"),
@@ -582,6 +587,8 @@ async def profile_summary(user: dict = Depends(S.get_current_user)):
 
 
 def _outcome(g):
+    if g.get("entry_fee") and g["result"] != "won" and abs(g.get("prize", 0) - g["entry_fee"]) < 0.01:
+        return "Push"
     if g.get("entry_fee") and g.get("prize") and g["result"] == "won":
         return f"{round(g['prize'] / g['entry_fee'], 2)}x"
     return "Won" if g["result"] == "won" else "Lost"
@@ -643,8 +650,8 @@ async def admin_control(body: ControlReq, admin: dict = Depends(S.require_admin)
         hi = 9 if body.target == "color" else 99
         if body.value is None:
             await S.db.house_config.update_one({"_id": "main"}, {"$unset": {f"overrides.{body.target}": ""}}, upsert=True)
-        elif not 0 <= int(body.value) <= hi:
-            raise HTTPException(status_code=400, detail=f"Result must be 0-{hi}")
+        elif body.value != int(body.value) or not 0 <= int(body.value) <= hi:
+            raise HTTPException(status_code=400, detail=f"Result must be a whole number 0-{hi}")
         else:
             await S.db.house_config.update_one({"_id": "main"}, {"$set": {f"overrides.{body.target}": int(body.value)}}, upsert=True)
     else:
@@ -669,10 +676,13 @@ async def admin_house_cfg(body: HouseCfgReq, admin: dict = Depends(S.require_adm
 
 
 async def take_aviator_force() -> Optional[float]:
-    doc = await S.db.house_config.find_one({"_id": "main"}, {"aviator_force": 1})
+    from pymongo import ReturnDocument
+    doc = await S.db.house_config.find_one_and_update(
+        {"_id": "main", "aviator_force.remaining": {"$gte": 1}}, {"$inc": {"aviator_force.remaining": -1}},
+        return_document=ReturnDocument.BEFORE)
     f = (doc or {}).get("aviator_force")
     if not f:
         return None
-    rem = f.get("remaining", 1) - 1
-    await S.db.house_config.update_one({"_id": "main"}, {"$set": {"aviator_force": {**f, "remaining": rem} if rem > 0 else None}})
+    if f["remaining"] <= 1:
+        await S.db.house_config.update_one({"_id": "main", "aviator_force.remaining": {"$lte": 0}}, {"$set": {"aviator_force": None}})
     return f["crash"]

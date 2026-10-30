@@ -76,7 +76,7 @@ export function WinCelebrationHost() {
             className="relative flex flex-col items-center px-10 py-8 rounded-3xl pz-glass border border-green-400/50 pz-glow-box">
             <Trophy className="h-14 w-14 text-yellow-400 mb-3" style={{ filter: "drop-shadow(0 0 12px rgba(250,204,21,0.7))" }} />
             <div className="font-display font-extrabold text-3xl text-white">You Won!</div>
-            <div className="font-mono-pz font-extrabold text-4xl text-green-400 mt-1" data-testid="win-prize">+{Math.round(win.prize).toLocaleString()}</div>
+            <div className="font-mono-pz font-extrabold text-4xl text-green-400 mt-1" data-testid="win-prize">+{Number(win.prize).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
             <div className="text-white/50 text-xs uppercase tracking-widest mt-1">coins</div>
           </motion.div>
         </motion.div>

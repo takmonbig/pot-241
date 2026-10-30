@@ -1,0 +1,49 @@
+{
+  "summary": "Full test of the POT24 house games, the admin dashboard and controls, and the mlgame-style UI redesign. BACKEND: 18/18 pytest pass (test_iter16_house_games.py), and a separate live Matka settlement check passed. Covered: color/matka state shape and lock gaps (5s/10s); invalid picks and amounts give 400; a bet in the lock window gives 409; a real Color round across the round end with admin override 7 paid 9x number, 2x green, 2x big and 0 for red/violet (wallet net +80 checked), and the override auto-cleared; override 0 paid red 1.5x, violet 4.5x and small 2x; Matka override 7 paid single 9x and jodi 90x after a real 120s round. Andar, Teen (including tie refund), Break10, Ludo (played to completion) and Call Break (bid, illegal off-suit card gives 400, played to done) all reconcile with the wallet, and finished sessions give 409. Admin dashboard works for today/week/month and gives 403 to players. Aviator force 1.5 for 2 rounds gave crash_point 1.5 twice and then cleared; value null clears; audit logs are written. Profile summary and live feed both return 200. FRONTEND (390x844): login restyle (login-mandatory badge, PLAY • WIN • EARN) and login to /home work. All hub testids are present; View All links go to /games/all and /bet-on-player; INVITE NOW goes to /profile#referral. nav-menu opens nav-drawer with all links and nav-logout. Bottom nav goes to /club/vip|bonus|offers|rewards. Color: countdown ticks, a bet was placed and the balance was debited, and recent results and the table render. Matka: jodi bet placed. Andar, Teen, Break10, Ludo (played to BOT WINS) and Call Break (played to scores) all show results. How-to popups appear on first visit for all 7 games. Bet on Player tabs, game picker and JOIN SLOT (opens the game) work. The /games/all grid shows 13 games. Profile summary shows all ps-* fields. Aviator FUN mode made 0 API calls and the fun balance went 10,000 to 9,980; REAL mode called /games/aviator/start and debited the wallet. Admin overview shows KPIs, both charts, agent-panel and SET/CLEAR for all 3 controls, and an invalid value shows an error. Bugs found: Matka countdown format for rounds over 60s, Matka jodi input overflow, and an unhandled clipboard rejection.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/house/teen/play, /api/house/break10/act (push)", "issue": "Ties and pushes are recorded with result='lost' (won = mult>1), so profile win_rate, losses and last_matches count a refund as a loss."},
+      {"endpoint": "POST /api/house/break10/act", "issue": "Any action other than 'hit' (including null or garbage) is treated as 'stand'. There is no validation."},
+      {"endpoint": "POST /api/admin/house/control", "issue": "Fractional color/matka values are silently truncated with int() (3.7 becomes 3). take_aviator_force is a non-atomic read then write, so 2 concurrent aviator starts can both consume one 'remaining' round. Use find_one_and_update."},
+      {"endpoint": "GET /api/house/{game}/state", "issue": "Settled history exposes server_seed_hash but never reveals server_seed, so the 'provably fair' claim for Color/Matka can't be verified by players."},
+      {"endpoint": "POST /api/games/aviator/start", "issue": "Pre-existing: crash_point is returned to the client in the start response. With admin force this also reveals the forced value. Players can read it from devtools."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "TimedGame Countdown (Matka, 120s rounds)", "issue": "The time is built as `00:${secs}`.slice(-5), so when more than 99s are left it shows '0:113', and between 60 and 99s it shows '00:85' instead of '01:25'. It needs proper mm:ss formatting.", "selector": "[data-testid='round-time']", "priority": "MEDIUM"},
+      {"component": "Matka jodi input", "issue": "At 390px the input overflows its card (right edge 397px vs 357px for the singles grid) and causes horizontal page scroll (scrollWidth 397). Add min-w-0 w-full to the input.", "selector": "[data-testid='matka-jodi-input']", "priority": "MEDIUM"},
+      {"component": "ProfileSummary referral copy (also Profile.js username copy)", "issue": "navigator.clipboard.writeText is not awaited or caught. When permission is denied it raises an uncaught runtime error overlay, and the 'Copied' popup shows even though the copy failed.", "selector": "[data-testid='ps-ref-copy']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin dashboard", "issues": ["The 'Game Wise Wagered' pie is sized by wagered amount, but the legend shows revenue (e.g. Teen Patti ₹-260). Rename it or show the wagered value.", "Deposits vs Withdrawals chart is an empty box with no 'No data' empty state when there are no transactions."]},
+      {"screen": "WinCelebration", "issue_note": "The celebration shows a rounded prize (+20) while the result banner shows +19.5 (Break10).", "issues": ["Win celebration amount is rounded and doesn't match the actual prize."]},
+      {"screen": "Home", "issues": ["Live Deposits/Withdrawals show 'No activity yet' because the DB has no deposit/withdrawal transactions. This is correct, but looks empty for a fresh install."]},
+      {"screen": "Call Break result", "issues": ["The result only says 'Scores 2 / 2 / -1 / -2'. It doesn't clearly say YOU WON / YOU LOST, and a tie with a bot is a loss with no explanation."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter16_house_games.py", "/app/backend/tests/matka_settle_check.py", "/app/test_reports/pytest/iter16.xml"],
+  "action_items": [
+    "Fix the Countdown formatting in TimedGame.js to mm:ss (Matka 120s round shows '0:113')",
+    "Add min-w-0/w-full to matka-jodi-input to stop the horizontal overflow on mobile",
+    "Wrap navigator.clipboard.writeText in try/catch (await) in ProfileSummary.js and Profile.js, and only show 'Copied' on success",
+    "Record ties/pushes (teen, break10) as a distinct 'push' result, not 'lost'",
+    "Make take_aviator_force atomic (find_one_and_update with remaining>0)",
+    "Optional: fix the pie legend label and the WinCelebration rounding; add an empty state for the deposits chart"
+  ],
+  "critical_code_review_comments": [
+    "house_games.py: _current_round can race between house_loop and /state requests and create 2 open rounds. The older one settles a second later, so it isn't harmful, but a unique index on {game, status:'open'} or a find_one_and_update upsert would be cleaner.",
+    "The aviator start response leaks crash_point (pre-existing). This is a serious fairness/security issue for a real-money game.",
+    "Server seeds for timed rounds are never revealed after settlement, so the fairness hash can't be checked.",
+    "Admin control payload allows any 'rounds' integer and float values for integer targets without validation."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter16_house_games.py", "/app/backend/tests/matka_settle_check.py"],
+  "success_rate": {"backend": "100% (18/18 + matka live settle)", "frontend": "~92% (3 UI bugs, all flows functional)"},
+  "test_credentials": "From /app/memory/test_credentials.md: admin 9999999999/Admin@123, player 8800112233/Test@123",
+  "seed_data_creation": "Player 8800112233 main_balance set to 50000 by the test fixture. Test bets and games were created in color/matka/andar/teen/break10/ludo/callbreak/aviator. All admin overrides and aviator_force were cleared at the end.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The onboarding guide localStorage key is 'timeup_guide_done' (not tu_guide_seen). How-to keys are tu_demo_seen_<game>. Login at /login goes straight to /home (via /splash). test_iter16_house_games.py takes about 85s (it waits for real color rounds). matka_settle_check.py waits up to about 2.5 min for a matka round. The Aviator fun round may still be flying when the mode is switched; mode toggles are blocked unless phase is idle."
+}

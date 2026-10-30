@@ -45,7 +45,7 @@ export function ProfileSummary() {
         <div className="flex-1"><div className="text-[10px] uppercase tracking-widest text-white/50">Referral code</div>
           <div className="font-mono-pz text-xl font-extrabold pz-gold-text" data-testid="ps-ref-code">{user?.referral_code || "—"}</div>
           <div className="text-[11px] text-white/60">Lifetime commission · Total earned ₹{(user?.referral_earnings || 0).toFixed(2)}</div></div>
-        <button onClick={() => { navigator.clipboard?.writeText(user?.referral_code || ""); showPopup({ type: "success", title: "Copied", message: "Share your code with friends." }); }}
+        <button onClick={async () => { try { await navigator.clipboard.writeText(user?.referral_code || ""); showPopup({ type: "success", title: "Copied", message: "Share your code with friends." }); } catch (e) { showPopup({ type: "info", title: "Your code", message: user?.referral_code || "" }); } }}
           data-testid="ps-ref-copy" className="rounded-lg bg-pazer-red px-4 py-2 text-xs font-extrabold">COPY</button>
       </div>
       <div className="grid grid-cols-2 gap-2">

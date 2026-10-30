@@ -76,14 +76,14 @@ export function AdminDashboard() {
         <div className="rounded-2xl border border-amber-400/25 bg-black/50 p-4" data-testid="chart-deposits">
           <div className="font-bold text-sm mb-2">Deposits vs Withdrawals</div>
           <div className="h-56">
-            <ResponsiveContainer><LineChart data={d.series}><CartesianGrid stroke="#ffffff10" /><XAxis dataKey="date" tick={{ fill: "#999", fontSize: 10 }} tickFormatter={(x) => x.slice(5)} /><YAxis tick={{ fill: "#999", fontSize: 10 }} />
-              <Tooltip contentStyle={{ background: "#100c06", border: "1px solid #f5b30155" }} /><Line type="monotone" dataKey="deposits" stroke="#22c55e" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="withdrawals" stroke="#ef4444" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer>
+            {d.series.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-white/40" data-testid="chart-deposits-empty">No deposits or withdrawals in this period</div> :<ResponsiveContainer><LineChart data={d.series}><CartesianGrid stroke="#ffffff10" /><XAxis dataKey="date" tick={{ fill: "#999", fontSize: 10 }} tickFormatter={(x) => x.slice(5)} /><YAxis tick={{ fill: "#999", fontSize: 10 }} />
+              <Tooltip contentStyle={{ background: "#100c06", border: "1px solid #f5b30155" }} /><Line type="monotone" dataKey="deposits" stroke="#22c55e" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="withdrawals" stroke="#ef4444" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer>}
           </div>
         </div>
         <div className="rounded-2xl border border-amber-400/25 bg-black/50 p-4" data-testid="chart-game-revenue">
           <div className="font-bold text-sm mb-2">Game Wise Wagered</div>
           <div className="h-40"><ResponsiveContainer><PieChart><Pie data={pie} dataKey="wagered" nameKey="game" innerRadius={35} outerRadius={65}>{pie.map((_, i) => <Cell key={i} fill={PIE[i % PIE.length]} />)}</Pie><Tooltip contentStyle={{ background: "#100c06", border: "1px solid #f5b30155" }} /></PieChart></ResponsiveContainer></div>
-          <div className="space-y-1 text-[11px]">{pie.slice(0, 6).map((g, i) => <div key={g.game} className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: PIE[i % PIE.length] }} />{g.game}<span className="ml-auto font-mono-pz text-white/60">{inr(g.revenue)}</span></div>)}</div>
+          <div className="space-y-1 text-[11px]">{pie.slice(0, 6).map((g, i) => <div key={g.game} className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: PIE[i % PIE.length] }} />{g.game}<span className="ml-auto font-mono-pz text-white/60">{inr(g.wagered)}</span></div>)}</div>
         </div>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

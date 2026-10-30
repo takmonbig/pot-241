@@ -72,7 +72,7 @@ export default function Profile() {
         </div>
         <div className="min-w-0">
           <h1 className="font-display font-bold text-xl truncate">{user?.display_name}</h1>
-          <button onClick={() => { navigator.clipboard.writeText(user?.username); showPopup({ type: "success", title: "Copied", message: "Username copied to clipboard." }); }}
+          <button onClick={async () => { try { await navigator.clipboard.writeText(user?.username); showPopup({ type: "success", title: "Copied", message: "Username copied to clipboard." }); } catch (e) { showPopup({ type: "info", title: "Username", message: user?.username }); } }}
             className="text-sm text-white/50 flex items-center gap-1 hover:text-pazer-red transition-colors" data-testid="profile-username">
             @{user?.username} <Copy className="h-3 w-3" />
           </button>

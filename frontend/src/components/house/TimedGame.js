@@ -38,7 +38,7 @@ function Countdown({ left, total, locked, period }) {
             strokeDasharray={C} strokeDashoffset={C * (1 - pct)} style={{ transition: "stroke-dashoffset .25s linear", filter: "drop-shadow(0 0 6px #f5b301)" }} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-mono-pz text-3xl font-extrabold" data-testid="round-time">{`00:${String(Math.ceil(left)).padStart(2, "0")}`.slice(-5)}</span>
+          <span className="font-mono-pz text-3xl font-extrabold" data-testid="round-time">{`${String(Math.floor(Math.ceil(left) / 60)).padStart(2, "0")}:${String(Math.ceil(left) % 60).padStart(2, "0")}`}</span>
           <span className="text-[10px] uppercase tracking-widest text-white/50">{locked ? "Bets closed" : "Count down"}</span>
         </div>
       </div>
@@ -117,7 +117,7 @@ export function TimedGame({ game }) {
             <div className="text-xs uppercase tracking-widest text-white/50 mt-4 mb-2">Jodi (00-99) · {c.payout_jodi}×</div>
             <div className="flex gap-2">
               <input value={jodi} maxLength={2} onChange={(e) => { setJodi(e.target.value.replace(/\D/g, "")); setSel({ kind: "jodi", pick: e.target.value }); }} placeholder="42"
-                data-testid="matka-jodi-input" className="flex-1 rounded-xl bg-black/60 border border-purple-400/40 px-4 py-3 font-mono-pz text-2xl text-center outline-none focus:border-amber-300" />
+                data-testid="matka-jodi-input" className="min-w-0 w-full flex-1 rounded-xl bg-black/60 border border-purple-400/40 px-4 py-3 font-mono-pz text-2xl text-center outline-none focus:border-amber-300" />
             </div>
           </>
         )}

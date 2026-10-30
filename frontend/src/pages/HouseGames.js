@@ -99,7 +99,7 @@ export function CallBreak() {
     const data = await run(() => api.post("/house/callbreak/act", { session_id: g.session_id, value }));
     if (!data) return;
     setG({ ...g, ...data });
-    if (data.phase === "done") { setRes({ win: data.won, text: data.won ? `YOU WIN · +${data.prize}` : `Scores ${data.scores.join(" / ")}` }); if (data.won) showWin(data.prize); }
+    if (data.phase === "done") { setRes({ win: data.won, text: data.won ? `YOU WON · +${data.prize}` : `YOU LOST · your score ${data.scores[0]} vs best ${Math.max(...data.scores.slice(1))}` }); if (data.won) showWin(data.prize); }
   };
   const s = g?.state;
   const lead = s?.trick?.[0]?.card?.suit;
