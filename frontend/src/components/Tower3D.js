@@ -36,7 +36,7 @@ export function Tower3D({ rows, cols, mults, activeRow, picks, bombs, status, on
   useEffect(() => {
     const S = createStage(mount.current, { fov: 40, exposure: 1.1, envIntensity: 0.7 });
     const { scene, camera, renderer } = S;
-    scene.fog = new THREE.Fog(0x0a0306, 16, 40);
+    scene.fog = new THREE.Fog(0x0a0703, 16, 40);
     scene.add(new THREE.AmbientLight(0xffffff, 0.25));
     const sun = new THREE.DirectionalLight(0xffe0c0, 1.8); sun.position.set(4, 12, 8); sun.castShadow = true;
     sun.shadow.mapSize.set(512, 512); Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 });

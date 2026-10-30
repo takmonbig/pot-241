@@ -8,7 +8,7 @@ const altOf = (m) => Math.log(Math.max(1, m)) * 5;
 function skyTexture() {
   const c = document.createElement("canvas"); c.width = 16; c.height = 512;
   const g = c.getContext("2d"); const gr = g.createLinearGradient(0, 0, 0, 512);
-  gr.addColorStop(0, "#05010a"); gr.addColorStop(0.45, "#2a0614"); gr.addColorStop(0.62, "#8a1a1a"); gr.addColorStop(0.72, "#ff7a2a"); gr.addColorStop(0.8, "#2a0a08"); gr.addColorStop(1, "#050203");
+  gr.addColorStop(0, "#060402"); gr.addColorStop(0.45, "#2a1406"); gr.addColorStop(0.62, "#8a5a12"); gr.addColorStop(0.72, "#ff7a2a"); gr.addColorStop(0.8, "#2a1a06"); gr.addColorStop(1, "#060402");
   g.fillStyle = gr; g.fillRect(0, 0, 16, 512);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }

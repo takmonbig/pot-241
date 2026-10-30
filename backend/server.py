@@ -194,7 +194,7 @@ BOT_NAMES = ["Aarav", "Ishaan", "Ananya", "Vivaan", "Diya", "Kiara", "Reyansh", 
 
 
 def gen_referral_code() -> str:
-    return "TU" + secrets.token_hex(3).upper()
+    return "P24" + secrets.token_hex(3).upper()
 
 
 async def get_config() -> dict:
@@ -548,7 +548,7 @@ async def register(body: RegisterReq, response: Response):
         raise HTTPException(status_code=400, detail="Enter a valid mobile number")
     if await db.users.find_one({"mobile": mobile}):
         raise HTTPException(status_code=400, detail="Mobile number already registered")
-    username = "TU" + secrets.token_hex(4).upper()
+    username = "P24" + secrets.token_hex(4).upper()
     # referral handling
     cfg = await get_config()
     ref_cfg = cfg.get("referral_config", {})

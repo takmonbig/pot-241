@@ -25,7 +25,7 @@ export function QuickActions() {
       <div className="fixed bottom-[70px] inset-x-0 z-40 pointer-events-none" data-testid="quick-actions">
         <div className="mx-auto max-w-md px-3">
           <button data-testid="open-custom-room" onClick={() => setCustom(true)}
-            className="pointer-events-auto w-full flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-pazer-red to-pazer-redhover px-5 py-3.5 text-base font-extrabold shadow-lg shadow-pazer-red/30 active:scale-[0.98] transition-transform">
+            className="pointer-events-auto w-full flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#ffe48a] via-pazer-red to-[#e07b00] text-[#170f02] px-5 py-3.5 text-base font-extrabold pz-shine shadow-lg shadow-pazer-red/30 active:scale-[0.98] transition-transform">
             <Users className="h-5 w-5" /> Play with Friends
           </button>
         </div>

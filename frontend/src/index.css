@@ -256,3 +256,8 @@ body.pz-gaming .backdrop-blur, body.pz-gaming .backdrop-blur-sm { backdrop-filte
   animation: pz-shine 3.2s ease-in-out infinite; pointer-events: none;
 }
 .pz-logo-mask { -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; }
+[class*="from-pazer-red"] { color: #170f02; }
+[role="tab"][data-state="active"][class*="bg-pazer-red"] {
+  color: #170f02 !important;
+  background-image: linear-gradient(135deg, #ffe48a 0%, #f5b301 45%, #e07b00 100%);
+}

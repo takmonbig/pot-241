@@ -182,7 +182,7 @@ export default function TowerStack() {
         ))}
       </div>
 
-      <div ref={playRef} className="relative h-[460px] scroll-mt-20 overflow-hidden rounded-3xl border border-pazer-red/25 bg-[radial-gradient(ellipse_at_top,#3a0a12,#0a0306_60%,#000)] select-none touch-none"
+      <div ref={playRef} className="relative h-[460px] scroll-mt-20 overflow-hidden rounded-3xl border border-pazer-red/25 bg-[radial-gradient(ellipse_at_top,#3a2606,#0a0703_60%,#000)] select-none touch-none"
         onPointerDown={(e) => { if (run.current?.running) { e.preventDefault(); tap(); } }} data-testid="stack-play-area">
         <StackScene ref={sceneRef} onFrame={onFrame} className="absolute inset-0" />
         <div className="pointer-events-none absolute inset-x-0 top-0 p-4 flex items-start justify-between">

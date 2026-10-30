@@ -5,7 +5,7 @@ const S = 3; // world units per engine unit
 const BH = 0.7; // block height
 const VIEW = 11; // ortho vertical view size
 
-const colorFor = (level) => new THREE.Color().setHSL(((352 + level * 7) % 360) / 360, 0.78, 0.56);
+const colorFor = (level) => new THREE.Color().setHSL((28 + ((level * 5) % 26)) / 360, 0.9, 0.42 + ((level % 4) * 0.04));
 
 /**
  * Imperative three.js stacking scene.
@@ -33,7 +33,7 @@ export const StackScene = forwardRef(function StackScene({ onFrame, className },
     Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 0.5, far: 60 });
     scene.add(sun);
     scene.add(sun.target);
-    const rim = new THREE.PointLight(0xff2a3a, 40, 30);
+    const rim = new THREE.PointLight(0xffa31a, 40, 30);
     rim.position.set(-6, 4, -4);
     scene.add(rim);
     const sparks = createParticles(scene, { count: 240, size: 0.25, color: 0xffffff });
@@ -53,7 +53,7 @@ export const StackScene = forwardRef(function StackScene({ onFrame, className },
 
     const state = { placed: [], falling: [], fx: [], moving: null, camY: 0, targetY: 0, last: performance.now() };
 
-    const base = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: 0x3a1018, roughness: 0.5, emissive: 0x220308 }));
+    const base = new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color: 0x3a2608, roughness: 0.5, emissive: 0x221503 }));
     base.scale.set(S, 14, S);
     base.position.set(0, -7, 0);
     base.receiveShadow = true;

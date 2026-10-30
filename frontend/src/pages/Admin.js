@@ -230,7 +230,7 @@ export default function Admin() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="bg-black/40 border border-white/10 flex-wrap h-auto">
           {TABS.map((t) => (
-            <TabsTrigger key={t.id} value={t.id} data-testid={`admin-tab-${t.id}`} className="data-[state=active]:bg-pazer-red data-[state=active]:text-white gap-2">
+            <TabsTrigger key={t.id} value={t.id} data-testid={`admin-tab-${t.id}`} className="data-[state=active]:bg-pazer-red data-[state=active]:text-[#170f02] gap-2">
               <t.icon className="h-4 w-4" /> {t.label}
             </TabsTrigger>
           ))}

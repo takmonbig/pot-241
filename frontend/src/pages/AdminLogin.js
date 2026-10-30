@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2, Eye, EyeOff, Phone } from "lucide-react";
@@ -15,22 +15,27 @@ export default function AdminLogin() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const submitting = useRef(false);
   useEffect(() => {
+    if (submitting.current) return;
     if (!loading && user && user.role === "admin") nav("/admin", { replace: true });
   }, [loading, user, nav]);
 
   const submit = async (e) => {
     e.preventDefault();
     setErr(""); setBusy(true);
+    submitting.current = true;
     try {
       const u = await login(mobile, password);
       if (u.role !== "admin") {
+        submitting.current = false;
         await logout();
         setErr("These credentials do not have admin access.");
         return;
       }
       nav("/splash?to=admin", { replace: true });
     } catch (e2) {
+      submitting.current = false;
       setErr(formatApiError(e2.response?.data?.detail) || e2.message);
     } finally { setBusy(false); }
   };

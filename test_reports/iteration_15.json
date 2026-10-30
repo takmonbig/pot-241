@@ -1,0 +1,36 @@
+{
+  "summary": "Frontend-only test of the POT24 rebrand (mobile 390x844 primary, desktop 1440 for admin). Passing: all brand assets/favicon/manifest/posters return 200; title is 'POT24 — Play Like Royalty'; /welcome has no TIMEUP/PAZER text, shows 'Play like royalty', hero-cta 'Claim your throne' goes to /register, hero-login and footer-cta are present, and the 6 landing-games WebM videos autoplay and loop once scrolled into view. Player login goes to /splash (brand-intro, crown drop, caption 'WELCOME, ROYALTY') and then /home after about 2.7s. nav-logout goes to /bye (brand-outro, 'SEE YOU SOON'), then /welcome with the token cleared; visiting /home afterwards redirects to /login. Hub cards loop sm/*.webm with poster/<id>.jpg. HowToPlay popups appear for all 6 games and their hd videos play after about 1.5s of loading. The friends-demo video plays. The referral share text and the RaceRoom share text (checked in code) say POT24. All 6 games load, their 3D canvases render (not black) and the start buttons are enabled with dark text. /1v1 and /multiplayer list rooms. The admin login page and admin panel are black/gold with no blue. Bug found and fixed: admin login skipped the 'Command Center' splash because of a race with a useEffect redirect. Retested: now /splash?to=admin, then /admin, and admin-logout plays the outro and lands on /admin/login. Remaining issues are 2 white-on-gold contrast problems and leftover red accents.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminLogin", "issue": "FIXED: on successful admin login the useEffect `if (user.role==='admin') nav('/admin')` fired after login() set the user and overrode nav('/splash?to=admin'), so the Command Center intro was skipped. Fixed with a submitting ref guard.", "selector": "[data-testid=admin-login-submit]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Hub / lobbies (QuickActions)", "issues": ["The 'Play with Friends' button (data-testid=open-custom-room) has white text (rgb 255,255,255) on a gold gradient (#f5b301 to #ffc933). Contrast is about 1.8:1, which is unreadable. It uses bg-gradient-to-r from-pazer-red to-pazer-redhover text-white (QuickActions.js:28). Change to dark text, e.g. text-[#170f02]."]},
+      {"screen": "Admin panel tabs", "issues": ["The active TabsTrigger uses data-[state=active]:text-white on gold (Admin.js:233), so 'Overview' and other active tabs are white on gold with low contrast. Use dark text."]},
+      {"screen": "Hub game cards", "issues": ["Per-game accent borders and glows are still multi-color. Aviator is red (#ef4444), Tower is green, Vortex is purple. This doesn't match 'accents gold, not red'. Consider gold borders or at least removing the red."]},
+      {"screen": "3D game scenes", "issues": ["Aviator (red mountains), Tower/stack (red/pink block on a maroon background) and T Mines (maroon tower) still use the old red-neon palette inside the canvases. Optional: retint them gold/warm."]},
+      {"screen": "Hub mobile", "issues": ["The floating REFER button and win-ticker overlap the bottom of the Aviator and Chicken cards' text and arrow buttons at 390px (layout carried over from before, not new)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "QuickActions.js:28 open-custom-room: replace text-white with dark text (#170f02) on the gold gradient",
+    "Admin.js:233: replace data-[state=active]:text-white with dark text on the active gold tab",
+    "Optionally switch the hub card accent colors (red Aviator etc.) and the red-tinted 3D scenes to gold"
+  ],
+  "critical_code_review_comments": [
+    "AdminLogin had an auth-state redirect effect racing with the post-submit navigation (fixed with a ref). Login.js has no such effect, so it is fine.",
+    "Internal identifiers still use old names (localStorage pazer_token, 'pazer:popup' events, the bg-pazer-red class, backend logger 'pazer', cloudinary folder 'timeup/'). None of these are user-visible, so this is acceptable.",
+    "The referral code prefix is still 'TU' (e.g. TU2124FC). This is user-visible and a leftover from the TIMEUP brand. Consider a 'P24' prefix for new codes."
+  ],
+  "updated_files": ["/app/frontend/src/pages/AdminLogin.js"],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "92%"},
+  "test_credentials": "From /app/memory/test_credentials.md: player 8800112233/Test@123, admin 9999999999/Admin@123",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Rebrand verified. The AdminLogin splash race is fixed with a submitting useRef. HowTo videos take about 1.5s to start (hd webm). Stopwatch rooms on /1v1 and /multiplayer don't use race-card testids. Check contrast of open-custom-room and the admin active tab after the main agent fixes them.",
+  "rca of the issue": "AdminLogin.js: useEffect([loading,user]) redirects admins to /admin. login() calls setUser and dispatches wallet:refresh, which re-renders the component and runs the effect, overriding nav('/splash?to=admin'). Repro: login on /admin/login and the URL goes straight to /admin. Mitigation: a ref set during submit skips the effect."
+}

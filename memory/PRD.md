@@ -139,3 +139,12 @@ UX/feature overhaul (verified iter5 14/14 + full regression, all critical fronte
 ## Backlog
 - P1: Live real-time spectating of race opponents (WebSocket), race history in Profile.
 - P2: Admin config for race fees/multipliers; cleanup of abandoned race sessions; split games_extra.py (>1000 lines).
+
+## Iteration 15 — POT24 rebrand (2026-06)
+- Brand renamed TIMEUP/PAZER → **POT24** everywhere (site, admin, tab title, favicon, manifest, share texts, support email support@pot24.com, backend strings; new referral codes/usernames use a P24 prefix).
+- Logo assets in `frontend/public/brand/` (transparent logo_512/240, crown.png + base.png for the animation, icon_192/512, favicon). Source cleanup script: `backend/scripts/logo_clean.py`.
+- Black & gold luxury theme: tailwind `pazer.red` is now gold #f5b301 (class names unchanged); primary buttons use a gold gradient with dark text (index.css "POT24 brand system"); shadcn vars are gold; admin moved from navy/blue to black/gold; game accents are warm golds; 3D scenes retinted (Aviator, Tower stack).
+- Animations: `components/BrandIntro.js`. Login → /splash (crown drops onto the logo, gold shine sweep, "Welcome, Royalty"); admin login → /splash?to=admin ("Command Center"); logout → /bye (crown lifts off, "See you soon") for players and admin (?to=admin).
+- New Landing (/welcome) with the logo hero and a 6-game video grid.
+- 9 demo videos regenerated in black & gold (Kling v3); posters in /videos/poster.
+- Test: iteration_15 (frontend 92%, contrast issues fixed afterwards).

@@ -12,13 +12,13 @@ const GAMES = [
     img: IMG + "3e91b1e43f580947843cce37c5bd3b2f78409a9a5bd0c0b6760c17c331142988.jpeg" },
   { id: "chicken", to: "/games/chicken", t1: "Chicken", t2: "Quest", tag: "3 Modes", desc: "Cross the lanes, dodge the traps.", icon: Egg, color: "#f59e0b",
     img: IMG2 + "2b1125721182200da6a6b79fdd9afe0d2f30603b64f352eae0eecdd79162c64c.jpeg" },
-  { id: "aviator", to: "/games/aviator", t1: "Aviator", t2: "", tag: "Up to 100×", desc: "Cash out before the plane flies away.", icon: Plane, color: "#ef4444",
+  { id: "aviator", to: "/games/aviator", t1: "Aviator", t2: "", tag: "Up to 100×", desc: "Cash out before the plane flies away.", icon: Plane, color: "#ff8a00",
     img: IMG + "717f36ec2192ac9731af75616c523b892cbceddb3b3b474e1298b63f7f9224ec.jpeg" },
-  { id: "tower", to: "/games/tower", t1: "T", t2: "Mines", tag: "Pick & Win", desc: "Pick safe tiles, find the gems.", icon: Gem, color: "#22c55e",
+  { id: "tower", to: "/games/tower", t1: "T", t2: "Mines", tag: "Pick & Win", desc: "Pick safe tiles, find the gems.", icon: Gem, color: "#ffd24d",
     img: IMG + "ac37d044145e261752683c651aedb3895405c487573fd4143c78f26f1d74dc0e.jpeg" },
   { id: "stack", to: "/games/stack", t1: "Tower", t2: "", tag: "Skill · 20×", desc: "Stack blocks against the clock.", icon: Layers, color: "#f97316",
     img: IMG2 + "0fb7b57cd56bf803c69b78b81da7e4d698a90625ec292057993d192234bbc713.jpeg" },
-  { id: "vortex", to: "/games/vortex", t1: "Vortex", t2: "Spin", tag: "Up to 100×", desc: "Fire, Water, Earth. Spin, bank or ride.", icon: Tornado, color: "#a855f7", wide: true,
+  { id: "vortex", to: "/games/vortex", t1: "Vortex", t2: "Spin", tag: "Up to 100×", desc: "Fire, Water, Earth. Spin, bank or ride.", icon: Tornado, color: "#e8a317", wide: true,
     img: IMG2 + "36e7f60b73bab5c78ea993d555ceaa9dab9a32a1d0752880ab7ab474a62d6c0d.jpeg" },
 ];
 
