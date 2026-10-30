@@ -37,14 +37,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen pz-radial pz-grain flex items-center justify-center px-4">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-        <Link to="/" className="flex justify-center mb-8">
-          <img src={LOGO_URL} alt="POT24" className="h-32 w-auto" style={{ filter: "drop-shadow(0 0 12px rgba(245,179,1,0.4))" }} />
+    <div className="min-h-screen pz-fire flex items-center justify-center px-4 py-8">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md relative">
+        <Link to="/" className="flex justify-center mb-2">
+          <img src={LOGO_URL} alt="POT24" className="h-36 w-auto" style={{ filter: "drop-shadow(0 0 18px rgba(245,179,1,0.45))" }} />
         </Link>
-        <div className="pz-glass rounded-2xl p-8">
-          <h1 className="font-display font-bold text-2xl mb-1">Log in</h1>
-          <p className="text-white/50 text-sm mb-6">Welcome back. Your throne awaits.</p>
+        <p className="text-center text-xs tracking-[0.4em] text-amber-200 font-bold">PLAY • WIN • EARN</p>
+        <p className="text-center text-sm text-white/70 mt-1 mb-4">India's Most Trusted Real Money Gaming Platform</p>
+        <div className="mx-auto mb-4 w-fit rounded-lg border border-red-500/70 bg-red-600/20 px-5 py-1.5 text-xs font-extrabold tracking-widest text-red-200 shadow-[0_0_18px_rgba(239,68,68,0.45)]" data-testid="login-mandatory">LOGIN MANDATORY</div>
+        <div className="rounded-2xl p-6 border border-red-500/30 bg-black/70 backdrop-blur shadow-[0_0_30px_rgba(239,68,68,0.15)]">
+          <h1 className="font-display text-2xl mb-1 pz-gold-text">Log in</h1>
+          <p className="text-white/50 text-sm mb-5">Welcome back. Your throne awaits.</p>
           <form onSubmit={submit} className="space-y-4">
             <div>
               <label className="text-xs uppercase tracking-wider text-white/50">Country &amp; Mobile Number</label>
@@ -78,9 +81,10 @@ export default function Login() {
                 data-testid="forgot-password" className="text-xs text-white/50 hover:text-pazer-red transition-colors">Forgot password?</a>
             </div>
             <button data-testid="login-submit" disabled={busy}
-              className="w-full py-3 rounded-full bg-pazer-red hover:bg-pazer-redhover font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
-              {busy && <Loader2 className="h-4 w-4 animate-spin" />} Log in
+              className="w-full py-3.5 rounded-xl bg-pazer-red hover:bg-pazer-redhover font-extrabold tracking-wider transition-colors flex items-center justify-center gap-2 disabled:opacity-60 pz-shine">
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />} LOG IN
             </button>
+            <p className="text-center text-[11px] text-white/50">⚡ Quick &amp; Secure Login</p>
           </form>
           <p className="text-center text-sm text-white/50 mt-6">
             No account? <Link to="/register" className="text-pazer-red hover:underline">Create one</Link>

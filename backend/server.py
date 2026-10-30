@@ -1035,6 +1035,10 @@ async def aviator_start(body: AviatorStartReq, user: dict = Depends(get_current_
     max_mult = ac.get("max_multiplier", 100)
     force_win = bool(u.get("force_win"))
     crash_point = max_mult if force_win else gen_crash_point(ac.get("house_edge_percent", 5), max_mult)
+    import house_games as _hg
+    forced = None if force_win else await _hg.take_aviator_force()
+    if forced:
+        crash_point = min(forced, max_mult)
     nonce = secrets.token_urlsafe(16)
     await debit_wallet(u, bet, "game_entry", meta={"mode": "aviator"})
     if force_win:
@@ -2206,6 +2210,8 @@ app.include_router(api)
 app.include_router(games_extra.router)
 import race  # noqa: E402  (race mode for all games in 1v1 / rooms / friends)
 app.include_router(race.router)
+import house_games  # noqa: E402  (Color Prediction, Matka, card games, Ludo, Call Break)
+app.include_router(house_games.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -2280,6 +2286,7 @@ async def startup():
     asyncio.create_task(room_manager_loop())
     asyncio.create_task(games_extra.stack_room_loop())
     asyncio.create_task(race.race_loop())
+    asyncio.create_task(house_games.house_loop())
     logger.info("POT24 API started")
 
 

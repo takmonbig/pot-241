@@ -5,6 +5,7 @@ import api, { formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { showPopup } from "@/components/CenterPopup";
 import { useSiteConfig } from "@/lib/siteConfig";
+import { ProfileSummary } from "@/components/ProfileSummary";
 
 const KYC_BADGE = {
   not_submitted: { t: "Not Submitted", c: "bg-white/10 text-white/60" },
@@ -82,17 +83,7 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      {/* Motivational banner */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="rounded-2xl bg-pazer-red p-5 mb-4 flex items-center gap-3">
-        <Flame className="h-8 w-8 shrink-0" />
-        <div>
-          <div className="font-display font-bold text-lg leading-tight">
-            {winRate >= 50 ? "You're on fire! Keep the streak going." : played === 0 ? "Play your first game to build your streak!" : "Sharpen your timing — your next win is close!"}
-          </div>
-          <div className="text-white/80 text-sm">Win rate {winRate}% · {won} wins from {played} games</div>
-        </div>
-      </motion.div>
+      <ProfileSummary />
         <div className="mb-4 rounded-3xl pz-glass p-4" data-testid="profile-by-game">
           <h3 className="font-display text-xl mb-3">Your games</h3>
           {byGame.length === 0 ? <p className="text-sm text-white/60">Play a game to see your per-game stats.</p> : (

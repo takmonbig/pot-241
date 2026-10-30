@@ -9,6 +9,9 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Splash from "@/pages/Splash";
 import Goodbye from "@/pages/Goodbye";
+import { AndarBahar, TeenPatti, Break10 } from "@/pages/CardGames";
+import { ColorPrediction, Matka, Ludo, CallBreak } from "@/pages/HouseGames";
+import { BetOnPlayer, AllGames, Club } from "@/pages/Club";
 import GameHome from "@/pages/GameHome";
 import GamesHub from "@/pages/GamesHub";
 import Aviator from "@/pages/Aviator";
@@ -60,6 +63,16 @@ function App() {
               <Route path="/games/chicken" element={<ChickenQuest />} />
               <Route path="/games/stack" element={<TowerStack />} />
               <Route path="/games/fairness" element={<Fairness />} />
+              <Route path="/games/color" element={<ColorPrediction />} />
+              <Route path="/games/matka" element={<Matka />} />
+              <Route path="/games/andar" element={<AndarBahar />} />
+              <Route path="/games/teen" element={<TeenPatti />} />
+              <Route path="/games/break10" element={<Break10 />} />
+              <Route path="/games/ludo" element={<Ludo />} />
+              <Route path="/games/callbreak" element={<CallBreak />} />
+              <Route path="/games/all" element={<AllGames />} />
+              <Route path="/bet-on-player" element={<BetOnPlayer />} />
+              <Route path="/club/:tab" element={<Club />} />
               <Route path="/1v1" element={<OneVsOne />} />
               <Route path="/multiplayer" element={<Multiplayer />} />
               <Route path="/leaderboard" element={<Leaderboard />} />

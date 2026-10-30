@@ -1,82 +1,118 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { LoopVideo } from "@/components/LoopVideo";
 import { motion } from "framer-motion";
-import { Timer, Plane, Gem, ChevronRight, Gamepad2, Tornado, Egg, Layers, Star } from "lucide-react";
-import { DailyReward } from "@/components/DailyReward";
+import { ChevronRight, Plus, Trophy, ArrowDownToLine, ArrowUpFromLine, Swords, Users, Gift } from "lucide-react";
+import api from "@/lib/api";
 import { Guide } from "@/components/Guide";
+import { LoopVideo } from "@/components/LoopVideo";
+import { GAME_META, POPULAR, BET_ON_PLAYER, art } from "@/lib/games";
 
-const IMG = "https://static.prod-images.emergentagent.com/jobs/670c5923-c1f4-4298-9135-36fea583d12c/images/";
-const IMG2 = "https://static.prod-images.emergentagent.com/jobs/1d2db223-cf0e-4ebf-b00c-a47a46100ac9/images/";
-const GAMES = [
-  { id: "stopwatch", to: "/games/stopwatch", t1: "Stop", t2: "watch", tag: "New Game", star: true, desc: "Stop the clock exactly on target.", icon: Timer, color: "#facc15", wide: true,
-    img: IMG + "3e91b1e43f580947843cce37c5bd3b2f78409a9a5bd0c0b6760c17c331142988.jpeg" },
-  { id: "chicken", to: "/games/chicken", t1: "Chicken", t2: "Quest", tag: "3 Modes", desc: "Cross the lanes, dodge the traps.", icon: Egg, color: "#f59e0b",
-    img: IMG2 + "2b1125721182200da6a6b79fdd9afe0d2f30603b64f352eae0eecdd79162c64c.jpeg" },
-  { id: "aviator", to: "/games/aviator", t1: "Aviator", t2: "", tag: "Up to 100×", desc: "Cash out before the plane flies away.", icon: Plane, color: "#ff8a00",
-    img: IMG + "717f36ec2192ac9731af75616c523b892cbceddb3b3b474e1298b63f7f9224ec.jpeg" },
-  { id: "tower", to: "/games/tower", t1: "T", t2: "Mines", tag: "Pick & Win", desc: "Pick safe tiles, find the gems.", icon: Gem, color: "#ffd24d",
-    img: IMG + "ac37d044145e261752683c651aedb3895405c487573fd4143c78f26f1d74dc0e.jpeg" },
-  { id: "stack", to: "/games/stack", t1: "Tower", t2: "", tag: "Skill · 20×", desc: "Stack blocks against the clock.", icon: Layers, color: "#f97316",
-    img: IMG2 + "0fb7b57cd56bf803c69b78b81da7e4d698a90625ec292057993d192234bbc713.jpeg" },
-  { id: "vortex", to: "/games/vortex", t1: "Vortex", t2: "Spin", tag: "Up to 100×", desc: "Fire, Water, Earth. Spin, bank or ride.", icon: Tornado, color: "#e8a317", wide: true,
-    img: IMG2 + "36e7f60b73bab5c78ea993d555ceaa9dab9a32a1d0752880ab7ab474a62d6c0d.jpeg" },
-];
+const VIDEO_GAMES = new Set(["aviator", "tower", "chicken", "vortex", "stack", "stopwatch"]);
 
-function Sparks({ color }) {
+function SectionHead({ title, to, testid }) {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {Array.from({ length: 7 }, (_, i) => (
-        <span key={i} className="hub-spark absolute bottom-0 h-1.5 w-1.5 rounded-full"
-          style={{ left: `${45 + ((i * 37) % 50)}%`, background: color, boxShadow: `0 0 8px ${color}`, animationDuration: `${2.4 + (i % 4) * 0.7}s`, animationDelay: `${i * 0.45}s` }} />
-      ))}
+    <div className="flex items-center justify-between mb-3 mt-7">
+      <h2 className="font-display text-xl tracking-wide uppercase pz-gold-text">{title}</h2>
+      {to && <Link to={to} data-testid={testid} className="text-xs font-bold text-amber-300 flex items-center">View All <ChevronRight className="h-4 w-4" /></Link>}
     </div>
   );
 }
 
-function GameCard({ g, i }) {
+function GameTile({ k, i, playing, live }) {
+  const g = GAME_META[k];
   return (
-    <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 * i, duration: 0.4 }} className={g.wide ? "col-span-2" : ""}>
-      <Link to={g.to} data-testid={`hub-card-${g.id}`}
-        className={`group relative block overflow-hidden rounded-3xl border-2 ${g.wide ? "h-48" : "h-60"}`}
-        style={{ borderColor: g.color, boxShadow: `0 0 22px ${g.color}55, inset 0 0 24px ${g.color}22` }}>
-        <LoopVideo k={g.id} poster={`/videos/poster/${g.id}.jpg`} preload="auto" data-testid={`hub-video-${g.id}`}
-          className={`absolute inset-0 h-full w-full object-cover ${g.wide ? "object-right" : "object-center"}`} />
-        <div className={`absolute inset-0 ${g.wide ? "bg-gradient-to-r from-black via-black/70 to-transparent" : "bg-gradient-to-t from-black via-black/60 to-transparent"}`} />
-        <div className="hub-sweep pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent" style={{ animationDelay: `${i * 0.6}s` }} />
-        <Sparks color={g.color} />
-        <div className="relative h-full flex flex-col justify-between p-4">
-          <span className="self-start inline-flex items-center gap-1 rounded-full bg-pazer-red px-3 py-1 text-[11px] font-extrabold tracking-wide uppercase shadow-lg">
-            {g.star && <Star className="h-3.5 w-3.5 fill-yellow-300 text-yellow-300" />}{g.tag}
-          </span>
-          <div className="flex items-end justify-between gap-2">
-            <div className="min-w-0">
-              <h2 className={`font-display leading-[0.95] drop-shadow-[0_2px_6px_rgba(0,0,0,.8)] ${g.wide ? "text-4xl" : "text-[28px]"}`}>
-                {g.wide && <g.icon className="inline h-7 w-7 mr-1.5 -mt-1" style={{ color: g.color }} />}
-                <span className="text-white">{g.t1}</span>{g.t2 && (g.wide ? "" : " ")}{g.t2 && <span style={{ color: g.color }}>{g.t2}</span>}
-              </h2>
-              <p className="text-white/75 text-[13px] mt-1 leading-snug">{g.desc}</p>
-            </div>
-            <span className="h-11 w-11 shrink-0 rounded-full flex items-center justify-center transition-transform group-hover:scale-110" style={{ background: g.color }}>
-              <ChevronRight className="h-6 w-6 text-black" />
-            </span>
-          </div>
+    <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="shrink-0 w-[132px]">
+      <Link to={g.to} data-testid={`hub-card-${k}`} className="block group">
+        <div className="relative aspect-square overflow-hidden rounded-2xl border-2 border-amber-400/40 group-hover:border-amber-300 transition-colors shadow-[0_0_18px_rgba(245,179,1,0.15)]">
+          {VIDEO_GAMES.has(k) ? <LoopVideo k={k} className="absolute inset-0 h-full w-full object-cover" /> : <img src={art(k)} alt={g.name} className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />}
+          {live && <span className="absolute top-2 right-2 rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-extrabold">LIVE</span>}
+        </div>
+        <div className="mt-2 text-center">
+          <div className="font-display text-sm uppercase leading-tight">{g.name}</div>
+          <div className="text-[10px] text-green-400 flex items-center justify-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-green-400" />{playing} Playing</div>
         </div>
       </Link>
     </motion.div>
   );
 }
 
-export default function GamesHub() {
+function Feed({ title, icon: Icon, items, color, testid }) {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-40" data-testid="games-hub">
-      <Guide />
-      <DailyReward />
-      <div className="flex items-center gap-2 mb-1">
-        <Gamepad2 className="h-5 w-5 text-pazer-red" />
-        <h1 className="font-display text-3xl">Games</h1>
+    <div className="rounded-2xl border border-amber-400/20 bg-black/50 p-3" data-testid={testid}>
+      <div className="flex items-center gap-1.5 mb-2 text-xs font-extrabold uppercase" style={{ color }}><Icon className="h-4 w-4" />{title}</div>
+      <div className="space-y-1.5">
+        {items.length === 0 && <p className="text-[11px] text-white/40">No activity yet</p>}
+        {items.slice(0, 4).map((x, i) => (
+          <div key={i} className="flex items-center justify-between text-[11px]">
+            <span className="text-white/75 truncate">{x.name}</span><span className="font-mono-pz font-bold" style={{ color }}>₹{Math.round(x.amount).toLocaleString()}</span>
+          </div>
+        ))}
       </div>
-      <p className="text-white/60 text-sm mb-5">Pick your game. Skill, nerve and timing win coins.</p>
-      <div className="grid grid-cols-2 gap-3">{GAMES.map((g, i) => <GameCard key={g.id} g={g} i={i} />)}</div>
+    </div>
+  );
+}
+
+export default function GamesHub() {
+  const [w, setW] = useState(null);
+  const [feed, setFeed] = useState({ deposit: [], withdrawal: [], playing: {} });
+  useEffect(() => {
+    const load = () => {
+      api.get("/wallet").then(({ data }) => setW(data)).catch(() => {});
+      api.get("/feed/live").then(({ data }) => setFeed(data)).catch(() => {});
+    };
+    load(); const iv = setInterval(load, 15000);
+    window.addEventListener("wallet:refresh", load);
+    return () => { clearInterval(iv); window.removeEventListener("wallet:refresh", load); };
+  }, []);
+  const playing = (k) => (feed.playing?.[k === "stopwatch" ? "fixed" : k] || 0) + 0;
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-5 pb-44" data-testid="games-hub">
+      <Guide />
+      <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-[#2a1a03] via-[#120b02] to-black p-4 flex items-center justify-between" data-testid="hub-balance-card">
+        <div>
+          <div className="text-[11px] uppercase tracking-widest text-amber-200/70">Total Balance</div>
+          <div className="font-mono-pz text-3xl font-extrabold pz-gold-text" data-testid="hub-balance">₹{w ? w.total_balance.toLocaleString(undefined, { minimumFractionDigits: 2 }) : "…"}</div>
+        </div>
+        <Link to="/wallet" data-testid="hub-add-cash" className="inline-flex items-center gap-1.5 rounded-xl bg-pazer-red px-4 py-2.5 font-extrabold text-sm pz-shine"><Plus className="h-4 w-4" /> ADD CASH</Link>
+      </div>
+
+      <div className="relative mt-4 overflow-hidden rounded-2xl border border-amber-400/40 h-36" data-testid="hub-jackpot">
+        <img src={art("jackpot")} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
+        <div className="relative h-full p-4 flex flex-col justify-center">
+          <div className="font-display text-3xl tracking-wider pz-gold-text">JACKPOT</div>
+          <div className="font-mono-pz text-2xl font-extrabold text-white">₹{feed.jackpot ? Math.round(feed.jackpot.amount).toLocaleString() : "0"}</div>
+          <div className="text-[11px] text-white/60 flex items-center gap-1"><Trophy className="h-3 w-3 text-amber-300" />{feed.jackpot ? `Biggest win today · ${feed.jackpot.game}` : "Be today's biggest winner"}</div>
+        </div>
+      </div>
+
+      <SectionHead title="Popular Games" to="/games/all" testid="hub-popular-all" />
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1" data-testid="hub-popular">
+        {POPULAR.map((k, i) => <GameTile key={k} k={k} i={i} playing={playing(k)} />)}
+      </div>
+
+      <SectionHead title="Bet on Player" to="/bet-on-player" testid="hub-bop-all" />
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1" data-testid="hub-bet-on-player">
+        {BET_ON_PLAYER.map((k, i) => <GameTile key={k} k={k} i={i} playing={playing(k)} live />)}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mt-6">
+        <Link to="/1v1" data-testid="hub-1v1" className="rounded-2xl border border-amber-400/30 bg-black/50 p-4 flex items-center gap-3 hover:border-amber-300"><Swords className="h-6 w-6 text-amber-300" /><div><div className="font-display">1v1 Duels</div><div className="text-[11px] text-white/50">Same round, best wins</div></div></Link>
+        <Link to="/multiplayer" data-testid="hub-rooms" className="rounded-2xl border border-amber-400/30 bg-black/50 p-4 flex items-center gap-3 hover:border-amber-300"><Users className="h-6 w-6 text-amber-300" /><div><div className="font-display">Rooms</div><div className="text-[11px] text-white/50">Race up to 8 players</div></div></Link>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mt-6">
+        <Feed title="Live Deposits" icon={ArrowDownToLine} items={feed.deposit || []} color="#4ade80" testid="hub-live-deposits" />
+        <Feed title="Live Withdrawals" icon={ArrowUpFromLine} items={feed.withdrawal || []} color="#fbbf24" testid="hub-live-withdrawals" />
+      </div>
+
+      <div className="relative mt-6 overflow-hidden rounded-2xl border border-amber-400/40 bg-gradient-to-r from-[#2a1a03] to-black p-4 pr-32 min-h-[130px]" data-testid="hub-refer">
+        <img src={art("refer")} alt="" className="absolute right-0 bottom-0 h-full w-32 object-cover object-top" />
+        <div className="flex items-center gap-1.5 font-display text-xl pz-gold-text"><Gift className="h-5 w-5 text-amber-300" />REFER &amp; EARN</div>
+        <p className="text-xs text-white/70 mt-1">Invite friends and earn commission on every game they play, for life.</p>
+        <Link to="/profile#referral" data-testid="hub-invite" className="mt-3 inline-block rounded-lg bg-pazer-red px-4 py-2 text-xs font-extrabold">INVITE NOW</Link>
+      </div>
     </div>
   );
 }

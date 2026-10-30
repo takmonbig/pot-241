@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
+import { AdminDashboard } from "@/components/AdminDashboard";
 import { Shield, Settings, Users, Banknote, ScrollText, Loader2, Save, CreditCard, Activity, Upload, Check, Trash2, KeyRound, Coins, Trophy, Eye, Facebook, LifeBuoy, UserCog } from "lucide-react";
 import api, { formatApiError } from "@/lib/api";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -238,7 +239,8 @@ export default function Admin() {
 
         {/* OVERVIEW */}
         <TabsContent value="overview" className="mt-6">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <AdminDashboard />
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
             {stats && [
               ["Total Users", stats.total_users], ["Total Games", stats.total_games], ["Active Rooms", stats.active_rooms],
               ["Deposits", stats.total_deposits], ["Prizes Paid", stats.total_prizes_paid],

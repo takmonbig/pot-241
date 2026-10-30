@@ -66,6 +66,9 @@ export default function Aviator() {
   const sess = useRef(null);
   const settled = useRef(false);
   const race = useRace();
+  const [fun, setFun] = useState(false);
+  const [funBal, setFunBal] = useState(() => Number(localStorage.getItem("pot24_fun_bal") || 10000));
+  const saveFun = (v) => { setFunBal(v); localStorage.setItem("pot24_fun_bal", String(v)); };
   const autoRef = useRef({ auto, autoX });
   autoRef.current = { auto, autoX };
 
@@ -74,6 +77,16 @@ export default function Aviator() {
   useEffect(() => () => window.dispatchEvent(new CustomEvent("game:active", { detail: false })), []);
 
   const start = async () => {
+    if (fun && !race.id) {
+      if (bet > funBal) return showPopup({ type: "warning", title: "Not enough fun coins", message: "Your fun balance resets to 10,000 when it runs out." });
+      const r = Math.random();
+      const cp = r < 0.04 ? 1 : Math.max(1.01, Math.min(100, Math.round((0.96 / (1 - r)) * 100) / 100));
+      saveFun(funBal - bet);
+      sess.current = { fun: true, crash: cp }; settled.current = false;
+      setCashed(null); setMult(1); setPhase("flying");
+      canvas.current?.fly(cfg?.growth_rate || 0.12, cp);
+      return;
+    }
     if (!race.id && bet < (cfg?.min_bet || 20)) return showPopup({ type: "warning", title: "Bet too low", message: `Minimum bet is ${cfg?.min_bet || 20} coins.` });
     setBusy(true);
     try {
@@ -105,6 +118,11 @@ export default function Aviator() {
     if (settled.current || !sess.current) return;
     settled.current = true;
     const s = sess.current;
+    if (s.fun) {
+      if (m < s.crash) { setCashed(m); const p = Math.round(bet * m * 100) / 100; saveFun((Number(localStorage.getItem("pot24_fun_bal")) || 0) + p); showPopup({ type: "success", title: `Fun win · ${m}×`, message: `+${p} fun coins (not real money)` }); }
+      else if (Number(localStorage.getItem("pot24_fun_bal")) < 20) saveFun(10000);
+      return;
+    }
     try {
       const { data } = await api.post("/games/aviator/cashout", { session_id: s.session_id, nonce: s.nonce, multiplier: m });
       window.dispatchEvent(new Event("wallet:refresh"));
@@ -139,6 +157,12 @@ export default function Aviator() {
         <HowToPlay k="aviator" /><MuteButton className="!ml-0" />
       </div>
       <RaceBar race={race} />
+      {!race.id && (
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-black/60 border border-white/10 p-1 mb-3" data-testid="aviator-mode">
+          <button onClick={() => phase === "idle" && setFun(true)} data-testid="aviator-mode-fun" className={`rounded-lg py-2 text-xs font-extrabold ${fun ? "bg-white/15" : "text-white/50"}`}>FUN MODE{fun && ` · ${Math.round(funBal).toLocaleString()}`}</button>
+          <button onClick={() => phase === "idle" && setFun(false)} data-testid="aviator-mode-real" className={`rounded-lg py-2 text-xs font-extrabold ${!fun ? "bg-red-600 text-white" : "text-white/50"}`}>REAL MONEY</button>
+        </div>
+      )}
       <History list={hist} />
 
       <div className="relative h-72 sm:h-80 rounded-3xl overflow-hidden border border-pazer-red/30 pz-glow-box">
