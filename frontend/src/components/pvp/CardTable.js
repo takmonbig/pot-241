@@ -66,13 +66,13 @@ export function CardTable({ d, send, busy }) {
         {!st.trick?.length && st.last_trick && <div className="absolute bottom-16 inset-x-0 text-center text-[10px] text-amber-200">{d.seats[st.last_trick.winner].name} took the last trick</div>}
         {g === "break10" && st.captured?.length > 0 && <div className="absolute bottom-2 left-2 flex gap-1" data-testid="b10-captured">{st.captured.map((c) => <span key={c.card} className="rounded bg-white text-black text-[9px] font-bold px-1">{c.card.replace("10", "10")}</span>)}</div>}
       </div>
-      <div className={`mt-2 text-center text-xs ${st.turn === me ? "text-amber-300 font-bold" : "text-white/50"}`} data-testid="table-turn">{st.turn === me ? (st.phase === "bid" ? "Your bid" : "Your turn: tap a highlighted card") : `${d.seats[st.turn]?.name}'s turn`}{g === "break10" && ` · You are Team ${(me % 2) + 1}`}</div>
+      <div className={`mt-2 text-center text-xs ${st.turn === me ? "text-amber-300 font-bold" : "text-white/50"}`} data-testid="table-turn">{d.match.status !== "playing" ? "Match over" : st.turn === me ? (st.phase === "bid" ? "Your bid" : "Your turn: tap a highlighted card") : `${d.seats[st.turn]?.name}'s turn`}{g === "break10" && ` · You are Team ${(me % 2) + 1}`}</div>
       {st.phase === "bid" && d.match.status === "playing" && <div className="mt-2"><Bidding d={d} send={send} busy={busy} /></div>}
-      <div className="mt-3 flex justify-center" data-testid="my-hand">
-        <div className="flex -space-x-5">{(st.hand || []).map((c, i) => {
+      <div className="mt-3" data-testid="my-hand">
+        <div className="flex flex-wrap justify-center gap-1.5">{(st.hand || []).map((c, i) => {
           const ok = st.phase === "play" && legal.some((l) => eq(l, c));
           return <button key={`${c[0]}${c[1]}`} disabled={!ok || busy} onClick={() => send({ rank: c[0], suit: c[1] })} data-testid={`hand-card-${c[0]}${c[1]}`}
-            className={`transition-transform ${ok ? "-translate-y-2 hover:-translate-y-4 drop-shadow-[0_0_8px_#f5b301]" : st.phase === "play" && st.turn === me ? "opacity-40" : ""}`}><PlayingCard c={{ rank: c[0], suit: c[1] }} small i={i * 0.2} /></button>;
+            className={`rounded-lg ${ok ? "ring-2 ring-amber-300 shadow-[0_0_10px_#f5b301]" : st.phase === "play" && st.turn === me ? "opacity-40" : ""}`}><PlayingCard c={{ rank: c[0], suit: c[1] }} small i={i * 0.2} /></button>;
         })}</div>
       </div>
     </div>

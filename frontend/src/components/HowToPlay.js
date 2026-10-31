@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { GAME_META, MODE_META } from "@/lib/games";
 
 const seenKey = (k) => `tu_demo_seen_${k}`;
+const VIDEOS = new Set(["stopwatch", "aviator", "tower", "chicken", "stack", "vortex", "1v1", "rooms", "friends"]);
 
 export function HowToPlay({ k, auto = true }) {
   const meta = GAME_META[k] || MODE_META[k];
@@ -28,7 +29,9 @@ export function HowToPlay({ k, auto = true }) {
       <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
         <DialogContent className="bg-pazer-card border-white/10 text-white p-0 overflow-hidden max-w-sm" data-testid={`howto-dialog-${k}`}>
           <div className="relative aspect-square w-full bg-black">
-            <LoopVideo k={meta.video || k} hd className="h-full w-full object-cover" data-testid={`howto-video-${k}`} />
+            {VIDEOS.has(meta.video || k)
+              ? <LoopVideo k={meta.video || k} hd className="h-full w-full object-cover" data-testid={`howto-video-${k}`} />
+              : <img src={`/games/${k}.jpg`} alt="" className="h-full w-full object-cover hub-anim-img" data-testid={`howto-video-${k}`} />}
             <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-pazer-card to-transparent" />
             <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-pazer-red px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider">
               <Play className="h-3 w-3 fill-white" /> Demo

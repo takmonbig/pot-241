@@ -39,7 +39,7 @@ export default function MatkaLive() {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search market (Kalyan, Milan Day…)" data-testid="matka-search" className="w-full rounded-xl bg-black/60 border border-purple-400/40 px-4 py-3 mb-3 outline-none focus:border-amber-300" />
           <div className="space-y-2" data-testid="matka-markets">
             {list.length === 0 && <p className="text-center text-white/40 py-8">No markets open today.</p>}
-            {list.slice(0, 60).map((m) => (
+            {list.slice(0, q ? 150 : 80).map((m) => (
               <button key={m.name} onClick={() => choose(m)} data-testid={`matka-market-${m.name.replace(/\s+/g, "-")}`} className="w-full flex items-center gap-3 rounded-2xl border border-purple-400/30 bg-black/50 p-3 text-left hover:border-amber-300">
                 <div className="flex-1"><div className="font-display">{m.name}</div><div className="text-[11px] text-white/50 flex items-center gap-1"><Clock className="h-3 w-3" />Open {m.open_time} · Close {m.close_time}</div></div>
                 <span className={`rounded-lg px-2 py-1 text-[10px] font-extrabold ${m.close_bets ? "bg-green-500/20 text-green-400" : "bg-red-500/15 text-red-400"}`}>{m.open_bets ? "BETTING OPEN" : m.close_bets ? "CLOSE OPEN" : "CLOSED"}</span>
@@ -59,7 +59,7 @@ export default function MatkaLive() {
           <div className="grid grid-cols-3 gap-1.5 mt-4">{KINDS.map(([k, l]) => (
             <button key={k} onClick={() => { setKind(k); setPick(""); }} data-testid={`matka-kind-${k}`} className={`rounded-lg py-2 text-[11px] font-extrabold ${kind === k ? "bg-pazer-red" : "bg-white/5"}`}>{l}<div className="text-[9px] opacity-70">{data.payout[k]}×</div></button>
           ))}</div>
-          <input value={pick} maxLength={len} onChange={(e) => setPick(e.target.value.replace(/\D/g, ""))} placeholder={"0".repeat(len)} data-testid="matka-pick-input"
+          <input value={pick} onChange={(e) => setPick(e.target.value.replace(/\D/g, "").slice(0, len))} placeholder={"0".repeat(len)} data-testid="matka-pick-input"
             className="mt-3 w-full rounded-xl bg-black/60 border border-purple-400/40 px-4 py-3 font-mono-pz text-3xl text-center tracking-[0.5em] outline-none focus:border-amber-300" />
           <div className="mt-3"><QuickBet bet={bet} setBet={setBet} prefix="matka" /></div>
           <button onClick={place} disabled={busy || pick.length !== len || !(kind.startsWith("close") ? sel.close_bets : sel.open_bets)} data-testid="matka-place"

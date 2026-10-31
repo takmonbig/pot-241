@@ -218,7 +218,7 @@ body.pz-gaming .pz-glass { backdrop-filter: none; -webkit-backdrop-filter: none;
 body.pz-gaming .backdrop-blur, body.pz-gaming .backdrop-blur-sm { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 
 /* ---- global performance: static sci-fi backdrop + no live blur (was forcing full-screen repaints every frame) ---- */
-.pz-scifi, .pz-scifi * { animation: none !important; will-change: auto !important; }
+.pz-scifi__orb { animation: none !important; will-change: auto !important; }
 .pz-scifi__scan { display: none !important; }
 .pz-glass { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: rgba(20, 15, 8, 0.92) !important; }
 .backdrop-blur, .backdrop-blur-sm, .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
@@ -279,3 +279,21 @@ body.pz-gaming .backdrop-blur, body.pz-gaming .backdrop-blur-sm { backdrop-filte
   animation: pz-fire-drift 14s linear infinite; pointer-events: none;
 }
 @keyframes pz-fire-drift { from { transform: translateX(-60px); } to { transform: translateX(60px); } }
+
+
+/* floating gold particles wallpaper */
+.pz-particle {
+  position: absolute; border-radius: 9999px; pointer-events: none;
+  background: radial-gradient(circle, #fff3c4 0%, #f5b301 45%, rgba(245, 179, 1, 0) 70%);
+  box-shadow: 0 0 8px rgba(245, 179, 1, 0.75);
+  animation-name: pz-float, pz-twinkle; animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite; will-change: transform, opacity;
+}
+@keyframes pz-float {
+  0% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(24px, -45vh, 0); }
+  100% { transform: translate3d(-12px, -90vh, 0); }
+}
+@keyframes pz-twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.95; } }
+.pz-scifi__grid, .pz-scifi__scan { display: none !important; }
+body.pz-gaming .pz-particle { opacity: 0.35; }

@@ -33,7 +33,7 @@ export function WinTicker() {
     return () => clearInterval(i);
   }, []);
   const { pathname } = useLocation();
-  if (gameActive || pathname.startsWith("/games/")) return null;
+  if (gameActive || ["/games/", "/pvp/", "/play/", "/race/"].some((p) => pathname.startsWith(p))) return null;
   return (
     <div className="fixed bottom-[130px] inset-x-0 z-30 pointer-events-none" data-testid="win-ticker">
       <div className="mx-auto max-w-md px-3">

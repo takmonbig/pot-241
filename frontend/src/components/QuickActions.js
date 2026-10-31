@@ -19,7 +19,7 @@ export function QuickActions() {
     return () => window.removeEventListener("game:active", h);
   }, []);
   const { pathname } = useLocation();
-  if (gameActive || pathname.startsWith("/games/")) return null;
+  if (gameActive || ["/games/", "/pvp/", "/play/", "/race/"].some((p) => pathname.startsWith(p))) return null;
   return (
     <>
       <div className="fixed bottom-[70px] inset-x-0 z-40 pointer-events-none" data-testid="quick-actions">

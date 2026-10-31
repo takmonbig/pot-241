@@ -56,11 +56,22 @@ def parse(result: str):
             "jodi": mid if len(mid) == 2 else None, "close_panna": cp}
 
 
+_rcache = {}
+
+
 async def fetch_result(name):
+    """Today's result only (IST), cached 60s."""
+    key = name.upper()
+    hit = _rcache.get(key)
+    if hit and time.time() - hit[0] < 60:
+        return hit[1]
     d = await asyncio.to_thread(_get, {"market": name.lower()})
-    if d.get("status") and d.get("data"):
-        return d["data"][0]["result"]
-    return None
+    today = datetime.now(IST).strftime("%Y-%m-%d")
+    res = None
+    if d.get("status") and d.get("data") and d["data"][0].get("date") == today:
+        res = d["data"][0]["result"]
+    _rcache[key] = (time.time(), res)
+    return res
 
 
 def _win(kind, pick, r):
@@ -75,13 +86,18 @@ def _decided(kind, r):
 async def settle_loop():
     while True:
         try:
-            pending = await S.db.matka_bets.distinct("market", {"status": "open"})
+            today = datetime.now(IST).strftime("%Y-%m-%d")
+            # bets from past days whose result was never fetched: refund (history isn't available on this plan)
+            async for b in S.db.matka_bets.find({"status": "open", "date": {"$lt": today}}):
+                upd = await S.db.matka_bets.update_one({"id": b["id"], "status": "open"}, {"$set": {"status": "refunded"}})
+                if upd.modified_count:
+                    await S.credit_wallet(b["user_id"], b["amount"], "refund", "main", status="refunded", meta={"reason": "matka_no_result", "market": b["market"]})
+            pending = await S.db.matka_bets.distinct("market", {"status": "open", "date": today})
             for name in pending:
                 res = await fetch_result(name)
                 if not res:
                     continue
                 r = parse(res)
-                today = datetime.now(IST).strftime("%Y-%m-%d")
                 async for b in S.db.matka_bets.find({"market": name, "status": "open", "date": today}):
                     if not _decided(b["kind"], r):
                         continue
@@ -117,7 +133,7 @@ async def list_markets(user: dict = Depends(S.get_current_user)):
         if c < o:
             c += timedelta(days=1)
         out.append({**m, "open_at": o.isoformat(), "close_at": c.isoformat(), "open_bets": now < o, "close_bets": now < c})
-    out.sort(key=lambda x: x["open_at"])
+    out.sort(key=lambda x: (not x["close_bets"], not x["open_bets"], x["open_at"]))
     return {"markets": out, "payout": PAYOUT, "now": now.isoformat()}
 
 

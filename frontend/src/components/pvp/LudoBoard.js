@@ -45,7 +45,7 @@ export function LudoBoard({ d, send, busy }) {
           const [r, c] = pos(col, p, i);
           const can = myTurn && si === me && st.phase === "move" && movable.includes(i);
           return (
-            <motion.button key={`${col}${i}`} layout animate={{ left: `${(c / 15) * 100}%`, top: `${(r / 15) * 100}%` }} transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            <motion.button key={`${col}${i}`} initial={false} animate={{ left: `${(c / 15) * 100}%`, top: `${(r / 15) * 100}%` }} transition={{ type: "spring", stiffness: 200, damping: 20 }}
               disabled={!can || busy} onClick={() => send({ type: "move", token: i })} data-testid={`ludo-token-${col}-${i}`}
               className={`absolute w-[6.67%] h-[6.67%] p-[1px] ${can ? "z-20" : "z-10"}`}>
               <span className={`block h-full w-full rounded-full border-2 border-white shadow ${can ? "animate-bounce ring-2 ring-white" : ""}`} style={{ background: HEX[col] }} />
@@ -57,7 +57,7 @@ export function LudoBoard({ d, send, busy }) {
         <motion.div key={`${st.last?.seat}-${st.last?.roll}-${d.match.version}`} initial={{ rotate: -200, scale: 0.4 }} animate={{ rotate: 0, scale: 1 }} className="text-6xl leading-none" data-testid="ludo-dice-face">{DICE[st.roll || st.last?.roll || 1]}</motion.div>
         <div className="flex-1 text-xs text-white/70">
           {st.last && <div>{d.seats[st.last.seat]?.name} rolled {st.last.roll}{st.last.note ? ` · ${st.last.note}` : ""}</div>}
-          <div className={myTurn ? "text-amber-300 font-bold" : ""} data-testid="ludo-turn">{myTurn ? (st.phase === "roll" ? "Your turn: roll the dice" : "Pick a glowing token") : `${d.seats[st.turn]?.name}'s turn`}</div>
+          <div className={myTurn ? "text-amber-300 font-bold" : ""} data-testid="ludo-turn">{d.match.status !== "playing" ? "Match over" : myTurn ? (st.phase === "roll" ? "Your turn: roll the dice" : "Pick a glowing token") : `${d.seats[st.turn]?.name}'s turn`}</div>
         </div>
         {myTurn && st.phase === "roll" && <button onClick={() => send({ type: "roll" })} disabled={busy} data-testid="ludo-roll" className="rounded-xl bg-pazer-red px-6 py-3 font-extrabold">ROLL</button>}
       </div>

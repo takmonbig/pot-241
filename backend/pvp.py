@@ -615,11 +615,15 @@ async def pvp_leave(room_id: str, user: dict = Depends(S.get_current_user)):
     room = await S.db.pvp_rooms.find_one({"id": room_id})
     if not room or room["status"] not in ("waiting", "ready"):
         raise HTTPException(status_code=409, detail="You can only leave before the match starts")
-    res = await S.db.pvp_rooms.update_one({"id": room_id, "status": {"$in": ["waiting", "ready"]}},
+    res = await S.db.pvp_rooms.update_one({"id": room_id, "status": {"$in": ["waiting", "ready"]}, "seats.user_id": uid},
                                           {"$pull": {"seats": {"user_id": uid}}, "$set": {"status": "waiting"}})
     if res.modified_count:
         await S.credit_wallet(uid, room["entry_fee"], "refund", "main", status="refunded", meta={"reason": "left_room"})
-        await S.db.pvp_rooms.update_many({"id": room_id}, {"$set": {"seats.$[].ready": False}})
+        fresh = await S.db.pvp_rooms.find_one({"id": room_id})
+        seats = [{**s, "ready": True if s.get("bot") else False} for s in fresh["seats"]]
+        await S.db.pvp_rooms.update_one({"id": room_id}, {"$set": {"seats": seats}})
+    elif not any(s["user_id"] == uid for s in room["seats"]):
+        raise HTTPException(status_code=403, detail="You are not in this room")
     return {"ok": True}
 
 
@@ -637,6 +641,8 @@ async def pvp_action(room_id: str, body: ActionReq, user: dict = Depends(S.get_c
     async with _lock:
         m = await S.db.pvp_matches.find_one({"id": room["match_id"]})
         m.pop("_id", None)
+        if body.action_id and body.action_id in m["action_ids"]:
+            return {"ok": True, "event": "duplicate", "version": m["version"]}
         if body.version != m["version"]:
             raise HTTPException(status_code=409, detail="Out of date, refreshing")
         ev = await act(room, m, seat, a, body.action_id)

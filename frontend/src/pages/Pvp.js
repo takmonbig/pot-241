@@ -66,10 +66,11 @@ export function PvpLobby() {
 }
 
 function Waiting({ d, roomId }) {
+  const nav = useNavigate();
   const { room, seats } = d;
   const left = d.ready_deadline ? Math.max(0, Math.round(d.ready_deadline - d.server_time)) : null;
   const me = seats[d.my_seat];
-  const act = (p) => api.post(`/pvp/${roomId}/${p}`).then(() => p === "leave" && window.dispatchEvent(new Event("wallet:refresh"))).catch(err);
+  const act = (p) => api.post(`/pvp/${roomId}/${p}`).then(() => { if (p === "leave") { window.dispatchEvent(new Event("wallet:refresh")); nav(`/play/${room.game}`); } }).catch(err);
   return (
     <div className="rounded-3xl pz-glass p-5" data-testid="pvp-waiting">
       <div className="flex items-center justify-between"><span className="font-display text-xl">{room.status === "ready" ? "READY CHECK" : "WAITING FOR PLAYERS"}</span><span className="text-sm text-white/60"><Users className="inline h-4 w-4" /> {seats.length}/{room.players}</span></div>
