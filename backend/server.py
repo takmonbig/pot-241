@@ -2212,6 +2212,10 @@ import race  # noqa: E402  (race mode for all games in 1v1 / rooms / friends)
 app.include_router(race.router)
 import house_games  # noqa: E402  (Color Prediction, Matka, card games, Ludo, Call Break)
 app.include_router(house_games.router)
+import pvp  # noqa: E402  (real multiplayer Call Break / Ludo / Break the 10)
+app.include_router(pvp.router)
+import matka_live  # noqa: E402  (real Matka markets via matkaapi.com)
+app.include_router(matka_live.router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -2287,6 +2291,8 @@ async def startup():
     asyncio.create_task(games_extra.stack_room_loop())
     asyncio.create_task(race.race_loop())
     asyncio.create_task(house_games.house_loop())
+    asyncio.create_task(pvp.pvp_loop())
+    asyncio.create_task(matka_live.settle_loop())
     logger.info("POT24 API started")
 
 

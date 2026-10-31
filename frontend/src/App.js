@@ -9,9 +9,11 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Splash from "@/pages/Splash";
 import Goodbye from "@/pages/Goodbye";
-import { AndarBahar, TeenPatti, Break10 } from "@/pages/CardGames";
-import { ColorPrediction, Matka, Ludo, CallBreak } from "@/pages/HouseGames";
+import { AndarBahar, TeenPatti } from "@/pages/CardGames";
+import { ColorPrediction } from "@/pages/HouseGames";
 import { BetOnPlayer, AllGames, Club } from "@/pages/Club";
+import { PvpLobby, PvpRoom } from "@/pages/Pvp";
+import MatkaLive from "@/pages/MatkaLive";
 import GameHome from "@/pages/GameHome";
 import GamesHub from "@/pages/GamesHub";
 import Aviator from "@/pages/Aviator";
@@ -64,12 +66,14 @@ function App() {
               <Route path="/games/stack" element={<TowerStack />} />
               <Route path="/games/fairness" element={<Fairness />} />
               <Route path="/games/color" element={<ColorPrediction />} />
-              <Route path="/games/matka" element={<Matka />} />
+              <Route path="/games/matka" element={<MatkaLive />} />
               <Route path="/games/andar" element={<AndarBahar />} />
               <Route path="/games/teen" element={<TeenPatti />} />
-              <Route path="/games/break10" element={<Break10 />} />
-              <Route path="/games/ludo" element={<Ludo />} />
-              <Route path="/games/callbreak" element={<CallBreak />} />
+              <Route path="/games/break10" element={<Navigate to="/play/break10" replace />} />
+              <Route path="/games/ludo" element={<Navigate to="/play/ludo" replace />} />
+              <Route path="/games/callbreak" element={<Navigate to="/play/callbreak" replace />} />
+              <Route path="/play/:game" element={<PvpLobby />} />
+              <Route path="/pvp/:roomId" element={<PvpRoom />} />
               <Route path="/games/all" element={<AllGames />} />
               <Route path="/bet-on-player" element={<BetOnPlayer />} />
               <Route path="/club/:tab" element={<Club />} />
